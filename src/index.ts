@@ -551,11 +551,11 @@ async function main() {
     screenSpace?: { width?: string; height?: string; bottom?: string; right?: string; top?: string; left?: string };
   }) {
     const entity = world.createTransformEntity(undefined, { persistent: true });
-    if (opts.pos) entity.object3D.position.set(...opts.pos);
+    if (opts.pos) entity.object3D!.position.set(...opts.pos);
     entity.addComponent(PanelUI, { config, maxWidth: opts.maxW ?? 1, maxHeight: opts.maxH ?? 1 });
     if (opts.follower) {
       entity.addComponent(Follower, {
-        target: world.player?.head ?? world.playerHeadEntity?.object3D,
+        target: (world as any).player?.head,
         offsetPosition: opts.follower.offset,
         behavior: opts.follower.behavior ?? FollowBehavior.PivotY,
         speed: opts.follower.speed ?? 5,
@@ -565,7 +565,7 @@ async function main() {
     if (opts.screenSpace) {
       entity.addComponent(ScreenSpace, { ...opts.screenSpace, zOffset: 0.25 });
     }
-    entity.object3D.visible = false;
+    entity.object3D!.visible = false;
     panels[name] = { entity, doc: null };
   }
 
@@ -597,8 +597,8 @@ async function main() {
     return null;
   }
 
-  function showPanel(name: string) { if (panels[name]) panels[name].entity.object3D.visible = true; }
-  function hidePanel(name: string) { if (panels[name]) panels[name].entity.object3D.visible = false; }
+  function showPanel(name: string) { if (panels[name]) panels[name].entity.object3D!.visible = true; }
+  function hidePanel(name: string) { if (panels[name]) panels[name].entity.object3D!.visible = false; }
   function hideAllPanels() { for (const k of Object.keys(panels)) hidePanel(k); }
 
   // ---- UI Event Binding ----
@@ -614,9 +614,9 @@ async function main() {
     if (!btnStart) return false;
 
     btnStart.addEventListener('click', () => { audio.play('select'); startGame(); });
-    btnModes.addEventListener('click', () => { audio.play('select'); switchState('modeSelect'); });
-    btnSettings.addEventListener('click', () => { audio.play('select'); switchState('settings'); });
-    btnHelp.addEventListener('click', () => { audio.play('select'); switchState('help'); });
+    btnModes?.addEventListener('click', () => { audio.play('select'); switchState('modeSelect'); });
+    btnSettings?.addEventListener('click', () => { audio.play('select'); switchState('settings'); });
+    btnHelp?.addEventListener('click', () => { audio.play('select'); switchState('help'); });
 
     // Mode Select
     const ms = getPanelDoc('modeSelect');
@@ -689,13 +689,13 @@ async function main() {
     const doc = getPanelDoc('hud');
     if (!doc) return;
     const s = doc.getElementById('hud-score');
-    if (s) s.text.value = `${score}`;
+    if (s && (s as any).text) (s as any).text.value = `${score}`;
     const l = doc.getElementById('hud-level');
-    if (l) l.text.value = `${level}`;
+    if (l && (l as any).text) (l as any).text.value = `${level}`;
     const c = doc.getElementById('hud-combo');
-    if (c) c.text.value = comboChain > 1 ? `x${comboChain}` : 'x1';
+    if (c && (c as any).text) (c as any).text.value = comboChain > 1 ? `x${comboChain}` : 'x1';
     const cl = doc.getElementById('hud-clears');
-    if (cl) cl.text.value = `${totalClears}`;
+    if (cl && (cl as any).text) (cl as any).text.value = `${totalClears}`;
   }
 
   function updateNextOrb() {
@@ -703,22 +703,23 @@ async function main() {
     if (!doc) return;
     const el = doc.getElementById('next-color');
     if (el) {
-      (el as any).backgroundColor = { value: ORB_COLORS[nextColor - 1].hex };
-      (el as any).borderColor = { value: ORB_COLORS[nextColor - 1].em };
+      try {
+        (el as any).backgroundColor = { value: ORB_COLORS[nextColor - 1].hex };
+        (el as any).borderColor = { value: ORB_COLORS[nextColor - 1].em };
+      } catch { /* style may not be settable this way */ }
     }
-    // Timer display for time attack
     const tl = doc.getElementById('timer-label');
     const tv = doc.getElementById('timer-value');
     if (gameMode === 'timeAttack' && tl && tv) {
-      (tl as any).text = { value: 'TIME' };
+      if ((tl as any).text) (tl as any).text.value = 'TIME';
       const remaining = Math.max(0, TIME_ATTACK_SECS - gameTimer);
-      (tv as any).text = { value: `${Math.ceil(remaining)}s` };
+      if ((tv as any).text) (tv as any).text.value = `${Math.ceil(remaining)}s`;
     } else if (gameMode === 'sprint' && tl && tv) {
-      (tl as any).text = { value: 'LEFT' };
-      (tv as any).text = { value: `${Math.max(0, SPRINT_TARGET - sprintClears)}` };
+      if ((tl as any).text) (tl as any).text.value = 'LEFT';
+      if ((tv as any).text) (tv as any).text.value = `${Math.max(0, SPRINT_TARGET - sprintClears)}`;
     } else if (tl && tv) {
-      (tl as any).text = { value: '' };
-      (tv as any).text = { value: '' };
+      if ((tl as any).text) (tl as any).text.value = '';
+      if ((tv as any).text) (tv as any).text.value = '';
     }
   }
 
@@ -726,7 +727,7 @@ async function main() {
     const doc = getPanelDoc('mainMenu');
     if (!doc) return;
     const hs = doc.getElementById('menu-highscore');
-    if (hs) hs.text.value = `${save.highScores[gameMode] || 0}`;
+    if (hs && (hs as any).text) (hs as any).text.value = `${save.highScores[gameMode] || 0}`;
   }
 
   function updateModeSelectUI() {
@@ -752,7 +753,7 @@ async function main() {
     if (!doc) return;
     const setText = (id: string, text: string) => {
       const el = doc.getElementById(id);
-      if (el) el.text.value = text;
+      if (el && (el as any).text) (el as any).text.value = text;
     };
     setText('go-score', `${score}`);
     setText('go-mode', MODE_NAMES[gameMode]);
@@ -773,11 +774,11 @@ async function main() {
     const doc = getPanelDoc('settings');
     if (!doc) return;
     const sfxEl = doc.getElementById('sfx-val');
-    if (sfxEl) sfxEl.text.value = `${Math.round(audio.sfxVol * 100)}%`;
+    if (sfxEl && (sfxEl as any).text) (sfxEl as any).text.value = `${Math.round(audio.sfxVol * 100)}%`;
     const musEl = doc.getElementById('mus-val');
-    if (musEl) musEl.text.value = `${Math.round(audio.musVol * 100)}%`;
+    if (musEl && (musEl as any).text) (musEl as any).text.value = `${Math.round(audio.musVol * 100)}%`;
     const tn = doc.getElementById('theme-name');
-    if (tn) tn.text.value = THEMES[themeIdx].name;
+    if (tn && (tn as any).text) (tn as any).text.value = THEMES[themeIdx].name;
   }
 
   // ---- Theme ----
@@ -1003,8 +1004,8 @@ async function main() {
 
   // ---- Input Handling ----
   function handleInput(dt: number) {
-    const kb = world.input?.keyboard;
-    const rightGP = world.input?.xr?.gamepads?.right;
+    const kb = (world as any).input?.keyboard;
+    const rightGP = (world as any).input?.xr?.gamepads?.right;
 
     // Pause
     if (gameState === 'playing' && playPhase !== 'countdown') {
