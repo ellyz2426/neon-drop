@@ -225,7 +225,7 @@
             "sourceTag": "span",
             "type": "custom",
             "children": [
-              "Rows push up from below. How long can you last?"
+              "Speed increases faster. How long can you last?"
             ],
             "properties": {
               "class": "mode-desc"
@@ -343,6 +343,85 @@
         "dataUid": "uid-29"
       },
       {
+        "sourceTag": "span",
+        "type": "custom",
+        "children": [
+          "SPECIAL"
+        ],
+        "properties": {
+          "class": "section-label"
+        },
+        "dataUid": "uid-32"
+      },
+      {
+        "type": "container",
+        "sourceTag": "div",
+        "children": [
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
+              "DAILY CHALLENGE"
+            ],
+            "properties": {
+              "class": "mode-name"
+            },
+            "dataUid": "uid-34"
+          },
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
+              "Same seed for everyone. Compare with friends!"
+            ],
+            "properties": {
+              "class": "mode-desc"
+            },
+            "dataUid": "uid-35"
+          }
+        ],
+        "properties": {
+          "id": "mode-daily",
+          "class": "mode-btn",
+          "cursor": "pointer"
+        },
+        "dataUid": "uid-33"
+      },
+      {
+        "type": "container",
+        "sourceTag": "div",
+        "children": [
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
+              "PUZZLE"
+            ],
+            "properties": {
+              "class": "mode-name"
+            },
+            "dataUid": "uid-37"
+          },
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
+              "Solve crafted orb sequences. Fewer colors, more strategy."
+            ],
+            "properties": {
+              "class": "mode-desc"
+            },
+            "dataUid": "uid-38"
+          }
+        ],
+        "properties": {
+          "id": "mode-puzzle",
+          "class": "mode-btn",
+          "cursor": "pointer"
+        },
+        "dataUid": "uid-36"
+      },
+      {
         "type": "container",
         "sourceTag": "div",
         "children": [
@@ -355,7 +434,7 @@
             "properties": {
               "class": "back-text"
             },
-            "dataUid": "uid-33"
+            "dataUid": "uid-40"
           }
         ],
         "properties": {
@@ -363,7 +442,7 @@
           "class": "back-btn",
           "cursor": "pointer"
         },
-        "dataUid": "uid-32"
+        "dataUid": "uid-39"
       }
     ],
     "properties": {
@@ -547,7 +626,7 @@
         "column": 0
       },
       "end": {
-        "line": 116,
+        "line": 125,
         "column": 6
       }
     },
@@ -758,7 +837,7 @@
       },
       "end": {
         "line": 99,
-        "column": 82
+        "column": 81
       }
     },
     "uid-23": {
@@ -857,17 +936,87 @@
         "column": 2
       },
       "end": {
-        "line": 115,
-        "column": 8
+        "line": 113,
+        "column": 44
       }
     },
     "uid-33": {
       "start": {
         "line": 114,
+        "column": 2
+      },
+      "end": {
+        "line": 117,
+        "column": 8
+      }
+    },
+    "uid-34": {
+      "start": {
+        "line": 115,
         "column": 4
       },
       "end": {
-        "line": 114,
+        "line": 115,
+        "column": 50
+      }
+    },
+    "uid-35": {
+      "start": {
+        "line": 116,
+        "column": 4
+      },
+      "end": {
+        "line": 116,
+        "column": 80
+      }
+    },
+    "uid-36": {
+      "start": {
+        "line": 118,
+        "column": 2
+      },
+      "end": {
+        "line": 121,
+        "column": 8
+      }
+    },
+    "uid-37": {
+      "start": {
+        "line": 119,
+        "column": 4
+      },
+      "end": {
+        "line": 119,
+        "column": 41
+      }
+    },
+    "uid-38": {
+      "start": {
+        "line": 120,
+        "column": 4
+      },
+      "end": {
+        "line": 120,
+        "column": 92
+      }
+    },
+    "uid-39": {
+      "start": {
+        "line": 122,
+        "column": 2
+      },
+      "end": {
+        "line": 124,
+        "column": 8
+      }
+    },
+    "uid-40": {
+      "start": {
+        "line": 123,
+        "column": 4
+      },
+      "end": {
+        "line": 123,
         "column": 39
       }
     }

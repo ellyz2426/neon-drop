@@ -97,7 +97,7 @@
   <span class="section-label">CHALLENGE</span>
   <div id="mode-survival" class="mode-btn" cursor="pointer">
     <span class="mode-name">SURVIVAL</span>
-    <span class="mode-desc">Rows push up from below. How long can you last?</span>
+    <span class="mode-desc">Speed increases faster. How long can you last?</span>
   </div>
   <div id="mode-cascade" class="mode-btn" cursor="pointer">
     <span class="mode-name">CASCADE</span>
@@ -110,6 +110,15 @@
   <div id="mode-gravity" class="mode-btn" cursor="pointer">
     <span class="mode-name">GRAVITY</span>
     <span class="mode-desc">Drop delay halved! Quick reflexes required.</span>
+  </div>
+  <span class="section-label">SPECIAL</span>
+  <div id="mode-daily" class="mode-btn" cursor="pointer">
+    <span class="mode-name">DAILY CHALLENGE</span>
+    <span class="mode-desc">Same seed for everyone. Compare with friends!</span>
+  </div>
+  <div id="mode-puzzle" class="mode-btn" cursor="pointer">
+    <span class="mode-name">PUZZLE</span>
+    <span class="mode-desc">Solve crafted orb sequences. Fewer colors, more strategy.</span>
   </div>
   <div id="mode-back" class="back-btn" cursor="pointer">
     <span class="back-text">BACK</span>

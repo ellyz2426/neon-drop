@@ -20,7 +20,7 @@ import {
 // TYPES
 // ============================================================
 type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help' | 'achievements' | 'stats' | 'skins';
-type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen' | 'survival' | 'cascade' | 'colorlimit' | 'gravity';
+type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen' | 'survival' | 'cascade' | 'colorlimit' | 'gravity' | 'daily' | 'puzzle';
 type PlayPhase = 'selecting' | 'dropping' | 'clearing' | 'cascading' | 'nextOrb' | 'countdown';
 type PowerUpType = 'rowBomb' | 'colorBomb' | 'wildOrb';
 
@@ -80,6 +80,9 @@ const THEMES = [
   { name: 'Matrix', fog: '#000a05', amb: '#1a2e1a', grid: '#00ff88', floor: '#0a1a0a' },
   { name: 'Sunset', fog: '#0a0805', amb: '#2e2a1a', grid: '#ff8800', floor: '#1a1505' },
   { name: 'Void', fog: '#080010', amb: '#1a1a30', grid: '#aa00ff', floor: '#0a001a' },
+  { name: 'Arctic', fog: '#050a10', amb: '#1a2a3e', grid: '#66ccff', floor: '#0a1020' },
+  { name: 'Solar', fog: '#100805', amb: '#3e2a1a', grid: '#ffcc00', floor: '#1a1005' },
+  { name: 'Deep Sea', fog: '#020810', amb: '#0a1a2e', grid: '#0088ff', floor: '#040a14' },
 ];
 
 const SKIN_DEFS = [
@@ -115,8 +118,26 @@ const POWERUP_COMBO_THRESHOLD = 3;
 const MODE_NAMES: Record<GameMode, string> = {
   classic: 'Classic', endless: 'Endless', timeAttack: 'Time Attack',
   sprint: 'Sprint', zen: 'Zen', survival: 'Survival', cascade: 'Cascade Chal.',
-  colorlimit: 'Color Limit', gravity: 'Gravity',
+  colorlimit: 'Color Limit', gravity: 'Gravity', daily: 'Daily Challenge',
+  puzzle: 'Puzzle',
 };
+
+// ============================================================
+// SEEDED RANDOM (for daily challenge)
+// ============================================================
+function mulberry32(seed: number) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function getDailySeed(): number {
+  const now = new Date();
+  return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+}
 
 // ============================================================
 // ACHIEVEMENTS
@@ -128,36 +149,60 @@ const ACHIEVEMENT_DEFS: AchievementDef[] = [
   { id: 'combo_x5', name: 'Pentachain', desc: 'Reach a 5x combo chain', icon: '◆' },
   { id: 'combo_x8', name: 'Octachain', desc: 'Reach an 8x combo chain', icon: '◆' },
   { id: 'combo_x10', name: 'Decachain', desc: 'Reach a 10x combo chain', icon: '◇' },
+  { id: 'combo_x15', name: 'Hyperchain', desc: 'Reach a 15x combo chain', icon: '◇' },
   { id: 'score_500', name: 'Scorer', desc: 'Score 500 points in one game', icon: '★' },
   { id: 'score_2000', name: 'High Scorer', desc: 'Score 2,000 points in one game', icon: '★' },
   { id: 'score_5000', name: 'Pro Scorer', desc: 'Score 5,000 points in one game', icon: '◆' },
   { id: 'score_10000', name: 'Master Scorer', desc: 'Score 10,000 points in one game', icon: '◆' },
   { id: 'score_25000', name: 'Legend', desc: 'Score 25,000 points in one game', icon: '◇' },
+  { id: 'score_50000', name: 'Mythic', desc: 'Score 50,000 points in one game', icon: '◇' },
   { id: 'level_5', name: 'Rising', desc: 'Reach level 5', icon: '★' },
   { id: 'level_10', name: 'Climber', desc: 'Reach level 10', icon: '◆' },
   { id: 'level_20', name: 'Ascended', desc: 'Reach level 20', icon: '◇' },
+  { id: 'level_30', name: 'Transcendent', desc: 'Reach level 30', icon: '◇' },
   { id: 'clears_50', name: 'Cleaner', desc: 'Clear 50 orbs in one game', icon: '★' },
   { id: 'clears_100', name: 'Purifier', desc: 'Clear 100 orbs in one game', icon: '◆' },
   { id: 'clears_200', name: 'Annihilator', desc: 'Clear 200 orbs in one game', icon: '◇' },
+  { id: 'clears_500', name: 'Obliterator', desc: 'Clear 500 orbs in one game', icon: '◇' },
   { id: 'cascade_5', name: 'Chain Reactor', desc: 'Get 5 cascades in one game', icon: '★' },
   { id: 'cascade_15', name: 'Avalanche', desc: 'Get 15 cascades in one game', icon: '◆' },
+  { id: 'cascade_30', name: 'Cataclysm', desc: 'Get 30 cascades in one game', icon: '◇' },
   { id: 'games_5', name: 'Regular', desc: 'Play 5 games', icon: '★' },
   { id: 'games_20', name: 'Dedicated', desc: 'Play 20 games', icon: '◆' },
   { id: 'games_50', name: 'Veteran', desc: 'Play 50 games', icon: '◇' },
+  { id: 'games_100', name: 'Centurion', desc: 'Play 100 games', icon: '◇' },
   { id: 'powerup_first', name: 'Empowered', desc: 'Use your first power-up', icon: '★' },
   { id: 'powerup_10', name: 'Power Player', desc: 'Use 10 power-ups', icon: '◆' },
+  { id: 'powerup_50', name: 'Arsenal', desc: 'Use 50 power-ups', icon: '◇' },
   { id: 'mode_classic', name: 'Classicist', desc: 'Complete a Classic game', icon: '★' },
   { id: 'mode_endless', name: 'Endurance', desc: 'Score 3,000 in Endless', icon: '★' },
   { id: 'mode_timeattack', name: 'Speed Demon', desc: 'Score 1,000 in Time Attack', icon: '★' },
   { id: 'mode_sprint', name: 'Sprinter', desc: 'Complete Sprint mode', icon: '★' },
   { id: 'mode_survival', name: 'Survivor', desc: 'Reach level 10 in Survival', icon: '◆' },
   { id: 'mode_cascade', name: 'Cascade Master', desc: 'Score 2,000 in Cascade mode', icon: '◆' },
-  { id: 'all_themes', name: 'Decorator', desc: 'Try all 5 themes', icon: '★' },
+  { id: 'mode_daily', name: 'Daily Player', desc: 'Complete a Daily Challenge', icon: '★' },
+  { id: 'mode_puzzle', name: 'Puzzler', desc: 'Complete a Puzzle round', icon: '★' },
+  { id: 'all_themes', name: 'Decorator', desc: 'Try all 8 themes', icon: '★' },
   { id: 'big_clear', name: 'Big Bang', desc: 'Clear 7+ orbs in a single match', icon: '◆' },
+  { id: 'mega_clear', name: 'Supernova', desc: 'Clear 10+ orbs in a single match', icon: '◇' },
   { id: 'full_board', name: 'Last Second', desc: 'Clear a match with 11 rows filled', icon: '◇' },
+  { id: 'board_clear', name: 'Tabula Rasa', desc: 'Clear the entire board', icon: '◇' },
   { id: 'total_clears_500', name: 'Orb Hunter', desc: 'Clear 500 total orbs', icon: '★' },
   { id: 'total_clears_2000', name: 'Orb Slayer', desc: 'Clear 2,000 total orbs', icon: '◆' },
-  { id: 'total_score_50k', name: 'Point Hoarder', desc: 'Accumulate 50,000 total score', icon: '◇' },
+  { id: 'total_clears_5000', name: 'Orb Destroyer', desc: 'Clear 5,000 total orbs', icon: '◇' },
+  { id: 'total_score_50k', name: 'Point Hoarder', desc: 'Accumulate 50,000 total score', icon: '◆' },
+  { id: 'total_score_200k', name: 'Point Emperor', desc: 'Accumulate 200,000 total score', icon: '◇' },
+  { id: 'speed_clear', name: 'Lightning', desc: 'Clear 20 orbs in 30 seconds', icon: '◆' },
+  { id: 'no_powerup', name: 'Purist', desc: 'Score 5,000 without using power-ups', icon: '◇' },
+  { id: 'match4', name: 'Four of a Kind', desc: 'Clear a 4-match', icon: '★' },
+  { id: 'match5', name: 'Quintet', desc: 'Clear a 5-match', icon: '◆' },
+  { id: 'match6', name: 'Hextet', desc: 'Clear a 6-match', icon: '◇' },
+  { id: 'all_skins', name: 'Fashionista', desc: 'Try all 6 orb skins', icon: '★' },
+  { id: 'daily_streak_3', name: 'Consistent', desc: 'Play daily challenge 3 days in a row', icon: '◆' },
+  { id: 'daily_streak_7', name: 'Devoted', desc: 'Play daily challenge 7 days in a row', icon: '◇' },
+  { id: 'drops_100', name: 'Dropper', desc: 'Drop 100 orbs in one game', icon: '★' },
+  { id: 'drops_500', name: 'Rain Maker', desc: 'Drop 500 orbs in one game', icon: '◇' },
+  { id: 'triple_powerup', name: 'Fully Loaded', desc: 'Have 3 power-ups at once', icon: '◆' },
 ];
 
 const ACH_PER_PAGE = 8;
@@ -345,9 +390,10 @@ function lowestEmptyRow(grid: number[][], col: number): number {
   return -1;
 }
 
-function findMatches(grid: number[][]): [number, number][] {
+function findMatches(grid: number[][]): { cells: [number, number][]; maxGroupSize: number } {
   const matched = new Set<string>();
   const dirs: [number, number][] = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  let maxGroupSize = 0;
   for (const [dr, dc] of dirs) {
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -360,12 +406,16 @@ function findMatches(grid: number[][]): [number, number][] {
           nr += dr; nc += dc;
         }
         if (cells.length >= 3) {
+          if (cells.length > maxGroupSize) maxGroupSize = cells.length;
           for (const [cr, cc] of cells) matched.add(`${cr},${cc}`);
         }
       }
     }
   }
-  return [...matched].map(s => { const p = s.split(','); return [+p[0], +p[1]]; });
+  return {
+    cells: [...matched].map(s => { const p = s.split(','); return [+p[0], +p[1]]; }),
+    maxGroupSize,
+  };
 }
 
 function applyGravity(grid: number[][], meshes: (Mesh | null)[][]): boolean {
@@ -538,6 +588,7 @@ async function main() {
   // ---- Active Orb ----
   let activeOrb: Mesh | null = null;
   let activeOrbColor = 0;
+  let ghostOrb: Mesh | null = null;
 
   function spawnActiveOrb(colorIdx: number, col: number) {
     if (activeOrb) scene.remove(activeOrb);
@@ -547,6 +598,7 @@ async function main() {
     pos.y += CELL * 0.5;
     activeOrb.position.copy(pos);
     scene.add(activeOrb);
+    updateGhostOrb(colorIdx, col);
   }
 
   function moveActiveOrbToCol(col: number) {
@@ -554,10 +606,33 @@ async function main() {
     const pos = gridToWorld(ROWS, col);
     pos.y += CELL * 0.5;
     activeOrb.position.x = pos.x;
+    updateGhostOrb(activeOrbColor, col);
   }
 
   function removeActiveOrb() {
     if (activeOrb) { scene.remove(activeOrb); activeOrb = null; }
+    removeGhostOrb();
+  }
+
+  function updateGhostOrb(colorIdx: number, col: number) {
+    removeGhostOrb();
+    const targetRow = lowestEmptyRow(grid, col);
+    if (targetRow < 0) return;
+    const skin = SKIN_DEFS[skinIdx];
+    const c = ORB_COLORS[colorIdx - 1];
+    const mat = new MeshStandardMaterial({
+      color: c.hex, emissive: c.em,
+      emissiveIntensity: skin.emIntensity * 0.3,
+      roughness: skin.roughness, metalness: skin.metalness,
+      transparent: true, opacity: 0.2,
+    });
+    ghostOrb = new Mesh(getOrbGeo(), mat);
+    ghostOrb.position.copy(gridToWorld(targetRow, col));
+    scene.add(ghostOrb);
+  }
+
+  function removeGhostOrb() {
+    if (ghostOrb) { scene.remove(ghostOrb); ghostOrb = null; }
   }
 
   // ---- Particles ----
@@ -654,6 +729,16 @@ async function main() {
   let achPage = 0;
   let themesUsed = new Set<number>();
   let usedPowerUpsThisGame = 0;
+  let maxMatchSize = 0;
+  let speedClearCount = 0;
+  let speedClearTimer = 0;
+  let boardClearedThisGame = false;
+  let skinsUsed = new Set<number>();
+  let dailyRng: (() => number) | null = null;
+
+  // Puzzle mode state
+  let puzzleLevel = 0;
+  const PUZZLE_SEED_BASE = 42;
 
   // Power-ups
   let heldPowerUps: (PowerUpType | null)[] = [null, null, null];
@@ -669,6 +754,12 @@ async function main() {
       const maxColors = Math.min(ORB_COLORS.length, 3 + Math.floor((level - 1) / 2));
       return Math.floor(Math.random() * maxColors) + 1;
     }
+    if (gameMode === 'daily' && dailyRng) {
+      return Math.floor(dailyRng() * ORB_COLORS.length) + 1;
+    }
+    if (gameMode === 'puzzle' && dailyRng) {
+      return Math.floor(dailyRng() * Math.min(ORB_COLORS.length, 4 + Math.floor(puzzleLevel / 3))) + 1;
+    }
     return Math.floor(Math.random() * ORB_COLORS.length) + 1;
   }
 
@@ -682,11 +773,12 @@ async function main() {
   function calcScore(count: number, chain: number): number {
     const base = count * 10;
     const groupBonus = count > 3 ? (count - 3) * 20 : 0;
+    const matchSizeBonus = count >= 5 ? (count - 4) * 50 : 0;
     const chainMult = Math.max(1, chain);
     if (gameMode === 'cascade') {
-      return chain > 1 ? (base + groupBonus) * chainMult * 2 : 0;
+      return chain > 1 ? (base + groupBonus + matchSizeBonus) * chainMult * 2 : 0;
     }
-    return (base + groupBonus) * chainMult;
+    return (base + groupBonus + matchSizeBonus) * chainMult;
   }
 
   // ---- Clear Grid Visuals ----
@@ -716,36 +808,60 @@ async function main() {
         case 'combo_x5': unlocked = bestComboThisGame >= 5; break;
         case 'combo_x8': unlocked = bestComboThisGame >= 8; break;
         case 'combo_x10': unlocked = bestComboThisGame >= 10; break;
+        case 'combo_x15': unlocked = bestComboThisGame >= 15; break;
         case 'score_500': unlocked = score >= 500; break;
         case 'score_2000': unlocked = score >= 2000; break;
         case 'score_5000': unlocked = score >= 5000; break;
         case 'score_10000': unlocked = score >= 10000; break;
         case 'score_25000': unlocked = score >= 25000; break;
+        case 'score_50000': unlocked = score >= 50000; break;
         case 'level_5': unlocked = level >= 5; break;
         case 'level_10': unlocked = level >= 10; break;
         case 'level_20': unlocked = level >= 20; break;
+        case 'level_30': unlocked = level >= 30; break;
         case 'clears_50': unlocked = totalClears >= 50; break;
         case 'clears_100': unlocked = totalClears >= 100; break;
         case 'clears_200': unlocked = totalClears >= 200; break;
+        case 'clears_500': unlocked = totalClears >= 500; break;
         case 'cascade_5': unlocked = totalCascades >= 5; break;
         case 'cascade_15': unlocked = totalCascades >= 15; break;
+        case 'cascade_30': unlocked = totalCascades >= 30; break;
         case 'games_5': unlocked = save.totalGames >= 5; break;
         case 'games_20': unlocked = save.totalGames >= 20; break;
         case 'games_50': unlocked = save.totalGames >= 50; break;
+        case 'games_100': unlocked = save.totalGames >= 100; break;
         case 'powerup_first': unlocked = save.totalPowerUps >= 1; break;
         case 'powerup_10': unlocked = save.totalPowerUps >= 10; break;
+        case 'powerup_50': unlocked = save.totalPowerUps >= 50; break;
         case 'mode_classic': unlocked = gameMode === 'classic' && gameState === 'gameOver'; break;
         case 'mode_endless': unlocked = gameMode === 'endless' && score >= 3000; break;
         case 'mode_timeattack': unlocked = gameMode === 'timeAttack' && score >= 1000; break;
         case 'mode_sprint': unlocked = gameMode === 'sprint' && sprintClears >= SPRINT_TARGET; break;
         case 'mode_survival': unlocked = gameMode === 'survival' && level >= 10; break;
         case 'mode_cascade': unlocked = gameMode === 'cascade' && score >= 2000; break;
-        case 'all_themes': unlocked = themesUsed.size >= 5; break;
-        case 'big_clear': unlocked = pendingMatches.length >= 7; break;
+        case 'mode_daily': unlocked = gameMode === 'daily' && gameState === 'gameOver'; break;
+        case 'mode_puzzle': unlocked = gameMode === 'puzzle' && gameState === 'gameOver'; break;
+        case 'all_themes': unlocked = themesUsed.size >= 8; break;
+        case 'big_clear': unlocked = maxMatchSize >= 7; break;
+        case 'mega_clear': unlocked = maxMatchSize >= 10; break;
         case 'full_board': unlocked = highestOccupiedRow(grid) >= 10 && pendingMatches.length > 0; break;
+        case 'board_clear': unlocked = boardClearedThisGame; break;
         case 'total_clears_500': unlocked = save.totalClears + totalClears >= 500; break;
         case 'total_clears_2000': unlocked = save.totalClears + totalClears >= 2000; break;
+        case 'total_clears_5000': unlocked = save.totalClears + totalClears >= 5000; break;
         case 'total_score_50k': unlocked = save.totalScore + score >= 50000; break;
+        case 'total_score_200k': unlocked = save.totalScore + score >= 200000; break;
+        case 'speed_clear': unlocked = speedClearCount >= 20; break;
+        case 'no_powerup': unlocked = score >= 5000 && usedPowerUpsThisGame === 0; break;
+        case 'match4': unlocked = maxMatchSize >= 4; break;
+        case 'match5': unlocked = maxMatchSize >= 5; break;
+        case 'match6': unlocked = maxMatchSize >= 6; break;
+        case 'all_skins': unlocked = skinsUsed.size >= 6; break;
+        case 'daily_streak_3': unlocked = (save as any).dailyStreak >= 3; break;
+        case 'daily_streak_7': unlocked = (save as any).dailyStreak >= 7; break;
+        case 'drops_100': unlocked = dropsThisGame >= 100; break;
+        case 'drops_500': unlocked = dropsThisGame >= 500; break;
+        case 'triple_powerup': unlocked = heldPowerUps.every(p => p !== null); break;
       }
       if (unlocked) {
         save.unlockedAch.push(ach.id);
@@ -991,7 +1107,7 @@ async function main() {
     // Mode Select
     const ms = getPanelDoc('modeSelect');
     if (ms) {
-      for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity'] as const) {
+      for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity', 'daily', 'puzzle'] as const) {
         const btn = ms.getElementById(`mode-${m}`);
         btn?.addEventListener('click', () => {
           audio.play('select');
@@ -1077,7 +1193,7 @@ async function main() {
     if (sk) {
       for (let i = 0; i < SKIN_DEFS.length; i++) {
         sk.getElementById(`skin-${i}`)?.addEventListener('click', () => {
-          audio.play('select'); skinIdx = i; save.skinIdx = i; writeSave(save); updateSkinsUI();
+          audio.play('select'); skinIdx = i; save.skinIdx = i; skinsUsed.add(i); writeSave(save); updateSkinsUI();
         });
       }
       sk.getElementById('skins-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
@@ -1147,7 +1263,7 @@ async function main() {
   function updateModeSelectUI() {
     const doc = getPanelDoc('modeSelect');
     if (!doc) return;
-    for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity']) {
+    for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity', 'daily', 'puzzle']) {
       const modeKey = m === 'timeattack' ? 'timeAttack' : m;
       const el = doc.getElementById(`mode-${m}`);
       if (el) {
@@ -1352,16 +1468,26 @@ async function main() {
     orbMeshes = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     score = 0; level = 1; comboChain = 0; totalClears = 0; totalCascades = 0;
     bestComboThisGame = 0; dropsThisGame = 0; gameTimer = 0; sprintClears = 0;
-    usedPowerUpsThisGame = 0;
+    usedPowerUpsThisGame = 0; maxMatchSize = 0;
+    speedClearCount = 0; speedClearTimer = 0; boardClearedThisGame = false;
     heldPowerUps = [null, null, null];
     powerUpChargeCombo = 0;
     selectedCol = Math.floor(COLS / 2);
+    // Set up seeded RNG for daily/puzzle
+    if (gameMode === 'daily') {
+      dailyRng = mulberry32(getDailySeed());
+    } else if (gameMode === 'puzzle') {
+      dailyRng = mulberry32(PUZZLE_SEED_BASE + puzzleLevel);
+    } else {
+      dailyRng = null;
+    }
     currentColor = randomColor();
     nextColor = randomColor();
     playPhase = 'countdown';
     countdownTimer = COUNTDOWN_TIME;
     dropTimer = 0;
     themesUsed.add(themeIdx);
+    skinsUsed.add(skinIdx);
     audio.startMusic();
     save.totalGames++;
     writeSave(save);
@@ -1421,15 +1547,19 @@ async function main() {
   }
 
   function checkAndClear() {
-    pendingMatches = findMatches(grid);
+    const matchResult = findMatches(grid);
+    pendingMatches = matchResult.cells;
     if (pendingMatches.length > 0) {
       comboChain++;
       powerUpChargeCombo++;
       if (comboChain > bestComboThisGame) bestComboThisGame = comboChain;
+      if (matchResult.maxGroupSize > maxMatchSize) maxMatchSize = matchResult.maxGroupSize;
+      if (pendingMatches.length > maxMatchSize) maxMatchSize = pendingMatches.length;
       const pts = calcScore(pendingMatches.length, comboChain);
       score += pts;
       totalClears += pendingMatches.length;
       sprintClears += pendingMatches.length;
+      speedClearCount += pendingMatches.length;
 
       if (comboChain > 1) { audio.play('cascade'); totalCascades++; }
       else { audio.play('clear'); }
@@ -1458,6 +1588,20 @@ async function main() {
     } else {
       comboChain = 0;
       powerUpChargeCombo = 0;
+      // Check for board clear
+      let boardEmpty = true;
+      for (let r = 0; r < ROWS && boardEmpty; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== 0) { boardEmpty = false; break; }
+        }
+      }
+      if (boardEmpty && totalClears > 0) {
+        boardClearedThisGame = true;
+        score += 1000; // Board clear bonus
+        notifyQueue.push({ icon: '✦', title: 'BOARD CLEAR', desc: '+1,000 BONUS' });
+        audio.play('levelup');
+        checkAchievements();
+      }
       if (isGameOver()) { endGame(); return; }
       playPhase = 'nextOrb';
       nextOrbTimer = 0;
@@ -1587,6 +1731,8 @@ async function main() {
         }
         case 'selecting': {
           dropTimer += dt;
+          speedClearTimer += dt;
+          if (speedClearTimer >= 30) { speedClearCount = 0; speedClearTimer = 0; }
           if (dropTimer >= getDropDelay()) dropOrb();
           if (activeOrb) {
             const bobY = Math.sin(performance.now() / 300) * 0.005;
@@ -1597,6 +1743,10 @@ async function main() {
               activeOrb.rotation.y += dt * 1.5;
               activeOrb.rotation.x += dt * 0.7;
             }
+          }
+          if (ghostOrb && SKIN_DEFS[skinIdx].geoType !== 'sphere') {
+            ghostOrb.rotation.y += dt * 0.8;
+            ghostOrb.rotation.x += dt * 0.4;
           }
           if (gameMode === 'timeAttack') {
             gameTimer += dt;

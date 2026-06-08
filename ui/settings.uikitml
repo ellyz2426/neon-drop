@@ -62,14 +62,14 @@
     align-items: center;
     justify-content: center;
     width: 24;
-    gap: 1;
+    gap: 0.8;
   }
   .theme-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 3.5;
-    height: 3.5;
+    width: 2.5;
+    height: 2.5;
     border-width: 0.08;
     border-radius: 0.4;
     cursor: pointer;
@@ -123,6 +123,9 @@
     <div id="theme-2" class="theme-btn" style="background-color: #00ff88; border-color: #00ff88" cursor="pointer"></div>
     <div id="theme-3" class="theme-btn" style="background-color: #ff8800; border-color: #ff8800" cursor="pointer"></div>
     <div id="theme-4" class="theme-btn" style="background-color: #aa00ff; border-color: #aa00ff" cursor="pointer"></div>
+    <div id="theme-5" class="theme-btn" style="background-color: #66ccff; border-color: #66ccff" cursor="pointer"></div>
+    <div id="theme-6" class="theme-btn" style="background-color: #ffcc00; border-color: #ffcc00" cursor="pointer"></div>
+    <div id="theme-7" class="theme-btn" style="background-color: #0088ff; border-color: #0088ff" cursor="pointer"></div>
   </div>
   <div id="settings-back" class="back-btn" cursor="pointer">
     <span class="back-text">BACK</span>
