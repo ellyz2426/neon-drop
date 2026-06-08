@@ -1,0 +1,165 @@
+{
+  "element": {
+    "type": "container",
+    "sourceTag": "div",
+    "children": [
+      {
+        "sourceTag": "span",
+        "type": "custom",
+        "children": [
+          "★"
+        ],
+        "properties": {
+          "id": "notify-icon",
+          "class": "notify-icon"
+        },
+        "dataUid": "uid-2"
+      },
+      {
+        "sourceTag": "span",
+        "type": "custom",
+        "children": [
+          "ACHIEVEMENT"
+        ],
+        "properties": {
+          "id": "notify-title",
+          "class": "notify-title"
+        },
+        "dataUid": "uid-3"
+      },
+      {
+        "sourceTag": "span",
+        "type": "custom",
+        "children": [
+          "First Match!"
+        ],
+        "properties": {
+          "id": "notify-desc",
+          "class": "notify-desc"
+        },
+        "dataUid": "uid-4"
+      }
+    ],
+    "properties": {
+      "class": "notify-root"
+    },
+    "dataUid": "uid-1"
+  },
+  "classes": {
+    "notify-root": {
+      "content": {
+        "display": "flex",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "padding": "1.5",
+        "backgroundColor": "rgba(0, 0, 0, 0.85)",
+        "borderColor": "#ff8800",
+        "borderWidth": "0.1",
+        "borderRadius": 0.8,
+        "gap": "0.5",
+        "minWidth": "16"
+      }
+    },
+    "notify-icon": {
+      "content": {
+        "fontSize": "2.5",
+        "color": "#ff8800"
+      }
+    },
+    "notify-title": {
+      "content": {
+        "fontSize": "1.5",
+        "color": "#ff8800",
+        "fontWeight": "bold"
+      }
+    },
+    "notify-desc": {
+      "content": {
+        "fontSize": "1",
+        "color": "#a0a0a0"
+      }
+    }
+  },
+  "ranges": {
+    "notify-root": {
+      "start": {
+        "line": 1,
+        "column": 2
+      },
+      "end": {
+        "line": 1,
+        "column": 14
+      }
+    },
+    "notify-icon": {
+      "start": {
+        "line": 13,
+        "column": 2
+      },
+      "end": {
+        "line": 13,
+        "column": 14
+      }
+    },
+    "notify-title": {
+      "start": {
+        "line": 17,
+        "column": 2
+      },
+      "end": {
+        "line": 17,
+        "column": 15
+      }
+    },
+    "notify-desc": {
+      "start": {
+        "line": 22,
+        "column": 2
+      },
+      "end": {
+        "line": 22,
+        "column": 14
+      }
+    },
+    "uid-1": {
+      "start": {
+        "line": 27,
+        "column": 0
+      },
+      "end": {
+        "line": 31,
+        "column": 6
+      }
+    },
+    "uid-2": {
+      "start": {
+        "line": 28,
+        "column": 2
+      },
+      "end": {
+        "line": 28,
+        "column": 53
+      }
+    },
+    "uid-3": {
+      "start": {
+        "line": 29,
+        "column": 2
+      },
+      "end": {
+        "line": 29,
+        "column": 65
+      }
+    },
+    "uid-4": {
+      "start": {
+        "line": 30,
+        "column": 2
+      },
+      "end": {
+        "line": 30,
+        "column": 64
+      }
+    }
+  }
+}
