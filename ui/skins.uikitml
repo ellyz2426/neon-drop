@@ -3,26 +3,26 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 4;
+    padding: 3;
     background-color: rgba(0, 0, 0, 0.92);
     border-color: #aa00ff;
     border-width: 0.12;
     border-radius: 1.2;
-    gap: 1.5;
+    gap: 1;
     min-width: 28;
   }
   .skins-title {
     font-size: 3.5;
     color: #aa00ff;
     font-weight: bold;
-    margin-bottom: 1;
+    margin-bottom: 0.5;
   }
   .skin-row {
     display: flex;
     flex-direction: row;
     align-items: center;
     width: 24;
-    padding: 1;
+    padding: 0.8;
     background-color: rgba(170, 0, 255, 0.06);
     border-color: #550088;
     border-width: 0.06;
@@ -38,7 +38,7 @@
     flex-direction: row;
     align-items: center;
     width: 24;
-    padding: 1;
+    padding: 0.8;
     background-color: rgba(170, 0, 255, 0.2);
     border-color: #aa00ff;
     border-width: 0.1;
@@ -47,29 +47,25 @@
     cursor: pointer;
   }
   .skin-preview {
-    width: 4;
-    height: 4;
-    border-radius: 2;
+    width: 3.5;
+    height: 3.5;
+    border-radius: 1.75;
     border-width: 0.08;
     border-color: #aa00ff;
   }
   .skin-info {
     display: flex;
     flex-direction: column;
-    gap: 0.3;
+    gap: 0.2;
   }
   .skin-name {
-    font-size: 1.5;
+    font-size: 1.4;
     color: #aa00ff;
     font-weight: bold;
   }
   .skin-desc {
-    font-size: 1;
+    font-size: 0.9;
     color: #607080;
-  }
-  .skin-locked {
-    font-size: 1;
-    color: #ff0055;
   }
   .back-btn {
     display: flex;
@@ -82,7 +78,7 @@
     border-width: 0.06;
     border-radius: 0.5;
     cursor: pointer;
-    margin-top: 1;
+    margin-top: 0.5;
   }
   .back-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
@@ -101,6 +97,8 @@
   <div id="skin-3" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #00aaff"></div><div class="skin-info"><span class="skin-name">ICE</span><span class="skin-desc">Frozen crystal orbs</span></div></div>
   <div id="skin-4" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #ffff00"></div><div class="skin-info"><span class="skin-name">PLASMA</span><span class="skin-desc">Electric energy orbs</span></div></div>
   <div id="skin-5" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #00ff44"></div><div class="skin-info"><span class="skin-name">TOXIC</span><span class="skin-desc">Radioactive glow orbs</span></div></div>
+  <div id="skin-6" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #cccccc"></div><div class="skin-info"><span class="skin-name">CHROME</span><span class="skin-desc">Mirror-polished orbs</span></div></div>
+  <div id="skin-7" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #220044"></div><div class="skin-info"><span class="skin-name">VOID</span><span class="skin-desc">Dark matter orbs</span></div></div>
   <div id="skins-back" class="back-btn" cursor="pointer">
     <span class="back-text">BACK</span>
   </div>

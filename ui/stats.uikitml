@@ -3,44 +3,44 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 4;
+    padding: 3;
     background-color: rgba(0, 0, 0, 0.92);
     border-color: #00ff88;
     border-width: 0.12;
     border-radius: 1.2;
-    gap: 1.2;
+    gap: 1;
     min-width: 30;
   }
   .stats-title {
     font-size: 3.5;
     color: #00ff88;
     font-weight: bold;
-    margin-bottom: 1;
+    margin-bottom: 0.5;
   }
   .section-header {
-    font-size: 2;
+    font-size: 1.8;
     color: #ff8800;
     font-weight: bold;
-    margin-top: 1;
+    margin-top: 0.5;
   }
   .stat-row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     width: 24;
-    padding: 0.4;
+    padding: 0.3;
   }
   .stat-label {
-    font-size: 1.3;
+    font-size: 1.2;
     color: #607080;
   }
   .stat-value {
-    font-size: 1.3;
+    font-size: 1.2;
     color: #00ffff;
     font-weight: bold;
   }
   .stat-value-gold {
-    font-size: 1.3;
+    font-size: 1.2;
     color: #ff8800;
     font-weight: bold;
   }
@@ -48,8 +48,8 @@
     width: 22;
     height: 0.04;
     background-color: rgba(255, 255, 255, 0.1);
-    margin-top: 0.5;
-    margin-bottom: 0.5;
+    margin-top: 0.3;
+    margin-bottom: 0.3;
   }
   .back-btn {
     display: flex;
@@ -62,7 +62,7 @@
     border-width: 0.06;
     border-radius: 0.5;
     cursor: pointer;
-    margin-top: 1;
+    margin-top: 0.5;
   }
   .back-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
@@ -92,6 +92,8 @@
   <div class="stat-row"><span class="stat-label">Sprint</span><span id="st-hs-sprint" class="stat-value-gold">0</span></div>
   <div class="stat-row"><span class="stat-label">Survival</span><span id="st-hs-survival" class="stat-value-gold">0</span></div>
   <div class="stat-row"><span class="stat-label">Cascade Chal.</span><span id="st-hs-cascade" class="stat-value-gold">0</span></div>
+  <div class="stat-row"><span class="stat-label">Daily Challenge</span><span id="st-hs-daily" class="stat-value-gold">0</span></div>
+  <div class="stat-row"><span class="stat-label">Puzzle</span><span id="st-hs-puzzle" class="stat-value-gold">0</span></div>
   <div id="stats-back" class="back-btn" cursor="pointer">
     <span class="back-text">BACK</span>
   </div>

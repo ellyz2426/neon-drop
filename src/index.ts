@@ -22,7 +22,7 @@ import {
 type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help' | 'achievements' | 'stats' | 'skins';
 type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen' | 'survival' | 'cascade' | 'colorlimit' | 'gravity' | 'daily' | 'puzzle';
 type PlayPhase = 'selecting' | 'dropping' | 'clearing' | 'cascading' | 'nextOrb' | 'countdown';
-type PowerUpType = 'rowBomb' | 'colorBomb' | 'wildOrb';
+type PowerUpType = 'rowBomb' | 'colorBomb' | 'wildOrb' | 'shuffle' | 'freezeTimer' | 'columnClear';
 
 interface AchievementDef {
   id: string;
@@ -92,12 +92,17 @@ const SKIN_DEFS = [
   { name: 'ICE', desc: 'Frozen crystal orbs', roughness: 0.05, metalness: 0.8, emIntensity: 0.3, geoType: 'octahedron' as const },
   { name: 'PLASMA', desc: 'Electric energy orbs', roughness: 0.4, metalness: 0.3, emIntensity: 1.5, geoType: 'sphere' as const },
   { name: 'TOXIC', desc: 'Radioactive glow orbs', roughness: 0.5, metalness: 0.1, emIntensity: 2.0, geoType: 'sphere' as const },
+  { name: 'CHROME', desc: 'Mirror-polished orbs', roughness: 0.0, metalness: 1.0, emIntensity: 0.4, geoType: 'sphere' as const },
+  { name: 'VOID', desc: 'Dark matter orbs', roughness: 0.8, metalness: 0.0, emIntensity: 3.0, geoType: 'icosahedron' as const },
 ];
 
 const POWER_UPS: PowerUp[] = [
   { type: 'rowBomb', icon: '⊞', name: 'Row Bomb' },
   { type: 'colorBomb', icon: '◉', name: 'Color Bomb' },
   { type: 'wildOrb', icon: '★', name: 'Wild Orb' },
+  { type: 'shuffle', icon: '⟳', name: 'Shuffle' },
+  { type: 'freezeTimer', icon: '❄', name: 'Freeze' },
+  { type: 'columnClear', icon: '⬇', name: 'Column Clear' },
 ];
 
 const BASE_DROP_DELAY = 4.0;
@@ -330,9 +335,29 @@ class AudioMgr {
     this.drone.frequency.value = 55;
     this.drone.connect(this.droneGain);
     this.drone.start();
+    // Second harmonic
     const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 82.5;
     const g2 = c.createGain(); g2.gain.value = 0.04 * this.musVol; g2.connect(c.destination);
     o2.connect(g2); o2.start();
+    // Arpeggiator — subtle ambient notes
+    const arpNotes = [110, 146.83, 164.81, 196, 220, 261.63, 329.63];
+    let arpIdx = 0;
+    const arpInterval = setInterval(() => {
+      if (!this.ctx || this.musVol <= 0) return;
+      const now = this.ctx.currentTime;
+      const arpGain = this.ctx.createGain();
+      arpGain.gain.setValueAtTime(0.015 * this.musVol, now);
+      arpGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+      arpGain.connect(this.ctx.destination);
+      const arpOsc = this.ctx.createOscillator();
+      arpOsc.type = 'sine';
+      arpOsc.frequency.value = arpNotes[arpIdx % arpNotes.length];
+      arpOsc.connect(arpGain);
+      arpOsc.start(now);
+      arpOsc.stop(now + 1.5);
+      arpIdx++;
+    }, 2000);
+    (this as any)._arpInterval = arpInterval;
   }
 
   updateMusicVol() {
@@ -663,6 +688,46 @@ async function main() {
     }
   }
 
+  // ---- Combo Flash Effect ----
+  let comboFlashIntensity = 0;
+  const comboFlashLight = new PointLight(0xffffff, 0, 15);
+  comboFlashLight.position.set(GRID_CX, GRID_BY + GRID_H / 2, GRID_Z + 0.5);
+  scene.add(comboFlashLight);
+
+  function triggerComboFlash(chain: number, color: Color) {
+    comboFlashLight.color.copy(color);
+    comboFlashIntensity = Math.min(3.0, chain * 0.5);
+    comboFlashLight.intensity = comboFlashIntensity;
+  }
+
+  function updateComboFlash(dt: number) {
+    if (comboFlashIntensity > 0) {
+      comboFlashIntensity = Math.max(0, comboFlashIntensity - dt * 4);
+      comboFlashLight.intensity = comboFlashIntensity;
+    }
+  }
+
+  // ---- Score Popup System ----
+  interface ScorePopup { mesh: Mesh; age: number; }
+  const scorePopups: ScorePopup[] = [];
+
+  // Simple text-like visual: glowing sphere with text - we use particles in a cluster
+  function spawnScoreEffect(pos: Vector3, pts: number, color: Color) {
+    // Create a burst of particles proportional to points
+    const count = Math.min(20, Math.max(4, Math.floor(pts / 50)));
+    for (let i = 0; i < count; i++) {
+      const mat = new MeshBasicMaterial({ color, transparent: true, opacity: 1, blending: AdditiveBlending });
+      const size = 0.005 + (pts / 5000) * 0.01;
+      const geo = new SphereGeometry(size, 4, 3);
+      const m = new Mesh(geo, mat);
+      m.position.copy(pos);
+      const angle = (i / count) * Math.PI * 2;
+      const vel = new Vector3(Math.cos(angle) * 0.8, 1.5 + Math.random(), Math.sin(angle) * 0.3);
+      scene.add(m);
+      particles.push({ mesh: m, vel, age: 0, life: 0.8 + Math.random() * 0.4 });
+    }
+  }
+
   // ---- Clear Animations ----
   const ringGeo = new TorusGeometry(ORB_R * 1.5, 0.003, 8, 24);
   interface ClearAnim { mesh: Mesh; orbMesh: Mesh | null; age: number; }
@@ -735,6 +800,7 @@ async function main() {
   let boardClearedThisGame = false;
   let skinsUsed = new Set<number>();
   let dailyRng: (() => number) | null = null;
+  let freezeTimerRemaining = 0;
 
   // Puzzle mode state
   let puzzleLevel = 0;
@@ -856,7 +922,7 @@ async function main() {
         case 'match4': unlocked = maxMatchSize >= 4; break;
         case 'match5': unlocked = maxMatchSize >= 5; break;
         case 'match6': unlocked = maxMatchSize >= 6; break;
-        case 'all_skins': unlocked = skinsUsed.size >= 6; break;
+        case 'all_skins': unlocked = skinsUsed.size >= 8; break;
         case 'daily_streak_3': unlocked = (save as any).dailyStreak >= 3; break;
         case 'daily_streak_7': unlocked = (save as any).dailyStreak >= 7; break;
         case 'drops_100': unlocked = dropsThisGame >= 100; break;
@@ -983,6 +1049,55 @@ async function main() {
         removeActiveOrb();
         spawnActiveOrb(currentColor, selectedCol);
         audio.play('powerup');
+        break;
+      }
+      case 'shuffle': {
+        // Randomly rearrange all orbs on the board
+        const allColors: number[] = [];
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== 0) allColors.push(grid[r][c]);
+        }
+        // Fisher-Yates shuffle
+        for (let i = allColors.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allColors[i], allColors[j]] = [allColors[j], allColors[i]];
+        }
+        let idx = 0;
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== 0) {
+            grid[r][c] = allColors[idx++];
+            if (orbMeshes[r][c]) {
+              scene.remove(orbMeshes[r][c]!);
+              orbMeshes[r][c] = createOrbMesh(grid[r][c]);
+              orbMeshes[r][c]!.position.copy(gridToWorld(r, c));
+              scene.add(orbMeshes[r][c]!);
+            }
+          }
+        }
+        audio.play('powerup');
+        notifyQueue.push({ icon: '⟳', title: 'SHUFFLED', desc: 'Board rearranged!' });
+        break;
+      }
+      case 'freezeTimer': {
+        // Pause the drop timer for 10 seconds
+        freezeTimerRemaining = 10;
+        audio.play('powerup');
+        notifyQueue.push({ icon: '❄', title: 'FROZEN', desc: '10s freeze active' });
+        break;
+      }
+      case 'columnClear': {
+        // Clear the entire selected column
+        for (let r = 0; r < ROWS; r++) {
+          if (grid[r][selectedCol] !== 0) {
+            const pos = gridToWorld(r, selectedCol);
+            spawnParticles(pos, new Color(ORB_COLORS[grid[r][selectedCol] - 1].hex), 4);
+            grid[r][selectedCol] = 0;
+            if (orbMeshes[r][selectedCol]) { scene.remove(orbMeshes[r][selectedCol]!); orbMeshes[r][selectedCol] = null; }
+            totalClears++;
+          }
+        }
+        applyGravity(grid, orbMeshes);
+        audio.play('cascade');
         break;
       }
     }
@@ -1362,6 +1477,8 @@ async function main() {
     setText('st-hs-sprint', `${save.highScores['sprint'] || 0}`);
     setText('st-hs-survival', `${save.highScores['survival'] || 0}`);
     setText('st-hs-cascade', `${save.highScores['cascade'] || 0}`);
+    setText('st-hs-daily', `${save.highScores['daily'] || 0}`);
+    setText('st-hs-puzzle', `${save.highScores['puzzle'] || 0}`);
   }
 
   function updateSkinsUI() {
@@ -1470,6 +1587,7 @@ async function main() {
     bestComboThisGame = 0; dropsThisGame = 0; gameTimer = 0; sprintClears = 0;
     usedPowerUpsThisGame = 0; maxMatchSize = 0;
     speedClearCount = 0; speedClearTimer = 0; boardClearedThisGame = false;
+    freezeTimerRemaining = 0;
     heldPowerUps = [null, null, null];
     powerUpChargeCombo = 0;
     selectedCol = Math.floor(COLS / 2);
@@ -1565,6 +1683,14 @@ async function main() {
       else { audio.play('clear'); }
       if (comboChain >= 3) audio.play('combo');
 
+      // Trigger combo flash effect for chain ≥ 2
+      if (comboChain >= 2 && pendingMatches.length > 0) {
+        const flashColorIdx = grid[pendingMatches[0][0]][pendingMatches[0][1]];
+        if (flashColorIdx > 0) {
+          triggerComboFlash(comboChain, new Color(ORB_COLORS[flashColorIdx - 1].hex));
+        }
+      }
+
       // Grant power-up on combo threshold
       if (powerUpChargeCombo >= POWERUP_COMBO_THRESHOLD) {
         grantPowerUp();
@@ -1576,6 +1702,12 @@ async function main() {
         startClearAnim(r, c, colorIdx);
         const pos = gridToWorld(r, c);
         spawnParticles(pos, new Color(ORB_COLORS[colorIdx - 1].hex), 6);
+      }
+      // Score burst effect at the center of the match
+      if (pendingMatches.length > 0) {
+        const centerR = pendingMatches[Math.floor(pendingMatches.length / 2)];
+        const centerPos = gridToWorld(centerR[0], centerR[1]);
+        spawnScoreEffect(centerPos, pts, new Color(ORB_COLORS[(grid[centerR[0]][centerR[1]] || 1) - 1]?.hex || '#ffffff'));
       }
 
       playPhase = 'clearing';
@@ -1715,6 +1847,7 @@ async function main() {
 
     updateParticles(dt);
     updateNotify(dt);
+    updateComboFlash(dt);
 
     if (gameState === 'playing') {
       handleInput(dt);
@@ -1730,7 +1863,11 @@ async function main() {
           break;
         }
         case 'selecting': {
-          dropTimer += dt;
+          if (freezeTimerRemaining > 0) {
+            freezeTimerRemaining -= dt;
+          } else {
+            dropTimer += dt;
+          }
           speedClearTimer += dt;
           if (speedClearTimer >= 30) { speedClearCount = 0; speedClearTimer = 0; }
           if (dropTimer >= getDropDelay()) dropOrb();
