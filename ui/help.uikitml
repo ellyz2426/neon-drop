@@ -1,0 +1,111 @@
+<style>
+  .help-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.9);
+    border-color: #00ffff;
+    border-width: 0.1;
+    border-radius: 1.2;
+    gap: 2;
+    min-width: 30;
+  }
+  .help-title {
+    font-size: 3.5;
+    color: #00ffff;
+    font-weight: bold;
+    margin-bottom: 1;
+  }
+  .section-title {
+    font-size: 2;
+    color: #ff8800;
+    font-weight: bold;
+    margin-top: 1;
+  }
+  .help-row {
+    display: flex;
+    flex-direction: row;
+    width: 26;
+    gap: 2;
+    padding: 0.5;
+  }
+  .key-text {
+    font-size: 1.3;
+    color: #00ffff;
+    font-weight: bold;
+    min-width: 10;
+  }
+  .desc-text {
+    font-size: 1.3;
+    color: #a0a0a0;
+  }
+  .rules-text {
+    font-size: 1.2;
+    color: #808090;
+    padding: 1;
+    max-width: 26;
+  }
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14;
+    height: 3;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #555555;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+    margin-top: 1;
+  }
+  .back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .back-text {
+    font-size: 1.5;
+    color: #888888;
+    font-weight: bold;
+  }
+</style>
+<div class="help-root">
+  <span class="help-title">HOW TO PLAY</span>
+  <span class="rules-text">Drop colored orbs into the grid. Match 3 or more of the same color in a row, column, or diagonal to clear them. Chain cascades for big combos!</span>
+  <span class="section-title">BROWSER</span>
+  <div class="help-row">
+    <span class="key-text">← →</span>
+    <span class="desc-text">Move column</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">↓</span>
+    <span class="desc-text">Quick drop</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">SPACE</span>
+    <span class="desc-text">Instant drop</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">ESC / P</span>
+    <span class="desc-text">Pause</span>
+  </div>
+  <span class="section-title">VR CONTROLLERS</span>
+  <div class="help-row">
+    <span class="key-text">Thumbstick</span>
+    <span class="desc-text">Move column</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">Trigger</span>
+    <span class="desc-text">Drop orb</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">A Button</span>
+    <span class="desc-text">Instant drop</span>
+  </div>
+  <div class="help-row">
+    <span class="key-text">B Button</span>
+    <span class="desc-text">Pause</span>
+  </div>
+  <div id="help-back" class="back-btn" cursor="pointer">
+    <span class="back-text">BACK</span>
+  </div>
+</div>

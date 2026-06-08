@@ -1,0 +1,39 @@
+<style>
+  .next-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-color: #00ffff;
+    border-width: 0.06;
+    border-radius: 0.6;
+    gap: 0.5;
+  }
+  .next-label {
+    font-size: 1;
+    color: #607080;
+    font-weight: bold;
+  }
+  .next-indicator {
+    width: 4;
+    height: 4;
+    border-radius: 2;
+    border-width: 0.1;
+  }
+  .timer-label {
+    font-size: 0.9;
+    color: #555555;
+  }
+  .timer-value {
+    font-size: 1.8;
+    color: #ffff00;
+    font-weight: bold;
+  }
+</style>
+<div class="next-root">
+  <span class="next-label">NEXT</span>
+  <div id="next-color" class="next-indicator" style="background-color: #00ffff; border-color: #00cccc"></div>
+  <span id="timer-label" class="timer-label">TIME</span>
+  <span id="timer-value" class="timer-value"></span>
+</div>

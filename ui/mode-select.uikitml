@@ -1,0 +1,105 @@
+<style>
+  .mode-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.88);
+    border-color: #00ffff;
+    border-width: 0.12;
+    border-radius: 1.2;
+    gap: 1.5;
+    min-width: 30;
+  }
+  .mode-title {
+    font-size: 3.5;
+    color: #00ffff;
+    font-weight: bold;
+    margin-bottom: 1;
+  }
+  .mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24;
+    padding: 1.2;
+    background-color: rgba(0, 255, 255, 0.08);
+    border-color: #00aaaa;
+    border-width: 0.06;
+    border-radius: 0.6;
+    cursor: pointer;
+    gap: 0.3;
+  }
+  .mode-btn:hover {
+    background-color: rgba(0, 255, 255, 0.2);
+  }
+  .mode-btn-active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24;
+    padding: 1.2;
+    background-color: rgba(0, 255, 255, 0.2);
+    border-color: #00ffff;
+    border-width: 0.1;
+    border-radius: 0.6;
+    cursor: pointer;
+    gap: 0.3;
+  }
+  .mode-name {
+    font-size: 2;
+    color: #00ffff;
+    font-weight: bold;
+  }
+  .mode-desc {
+    font-size: 1;
+    color: #607080;
+  }
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14;
+    height: 3;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #555555;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+    margin-top: 1;
+  }
+  .back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .back-text {
+    font-size: 1.5;
+    color: #888888;
+    font-weight: bold;
+  }
+</style>
+<div class="mode-root">
+  <span class="mode-title">GAME MODES</span>
+  <div id="mode-classic" class="mode-btn-active" cursor="pointer">
+    <span class="mode-name">CLASSIC</span>
+    <span class="mode-desc">Speed increases each level. How far can you go?</span>
+  </div>
+  <div id="mode-endless" class="mode-btn" cursor="pointer">
+    <span class="mode-name">ENDLESS</span>
+    <span class="mode-desc">No pressure. Drop and match at your own pace.</span>
+  </div>
+  <div id="mode-timeattack" class="mode-btn" cursor="pointer">
+    <span class="mode-name">TIME ATTACK</span>
+    <span class="mode-desc">Score as much as you can in 120 seconds.</span>
+  </div>
+  <div id="mode-sprint" class="mode-btn" cursor="pointer">
+    <span class="mode-name">SPRINT</span>
+    <span class="mode-desc">Clear 40 orbs as fast as possible.</span>
+  </div>
+  <div id="mode-zen" class="mode-btn" cursor="pointer">
+    <span class="mode-name">ZEN</span>
+    <span class="mode-desc">No game over. Relax and enjoy the cascades.</span>
+  </div>
+  <div id="mode-back" class="back-btn" cursor="pointer">
+    <span class="back-text">BACK</span>
+  </div>
+</div>

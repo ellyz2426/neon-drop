@@ -1,0 +1,130 @@
+<style>
+  .settings-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.9);
+    border-color: #00ffff;
+    border-width: 0.1;
+    border-radius: 1.2;
+    gap: 2;
+    min-width: 28;
+  }
+  .settings-title {
+    font-size: 3.5;
+    color: #00ffff;
+    font-weight: bold;
+    margin-bottom: 1;
+  }
+  .setting-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 24;
+    padding: 0.5;
+  }
+  .setting-label {
+    font-size: 1.5;
+    color: #a0a0a0;
+  }
+  .setting-value {
+    font-size: 1.5;
+    color: #00ffff;
+    font-weight: bold;
+    min-width: 4;
+    text-align: center;
+  }
+  .vol-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3;
+    height: 3;
+    background-color: rgba(0, 255, 255, 0.1);
+    border-color: #00aaaa;
+    border-width: 0.06;
+    border-radius: 0.4;
+    cursor: pointer;
+  }
+  .vol-btn:hover {
+    background-color: rgba(0, 255, 255, 0.2);
+  }
+  .vol-btn-text {
+    font-size: 2;
+    color: #00ffff;
+    font-weight: bold;
+  }
+  .theme-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 24;
+    gap: 1;
+  }
+  .theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5;
+    height: 3.5;
+    border-width: 0.08;
+    border-radius: 0.4;
+    cursor: pointer;
+  }
+  .theme-btn:hover {
+    border-width: 0.14;
+  }
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14;
+    height: 3;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #555555;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+    margin-top: 1;
+  }
+  .back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .back-text {
+    font-size: 1.5;
+    color: #888888;
+    font-weight: bold;
+  }
+</style>
+<div class="settings-root">
+  <span class="settings-title">SETTINGS</span>
+  <div class="setting-row">
+    <span class="setting-label">SFX Volume</span>
+    <div id="sfx-down" class="vol-btn" cursor="pointer"><span class="vol-btn-text">-</span></div>
+    <span id="sfx-val" class="setting-value">80%</span>
+    <div id="sfx-up" class="vol-btn" cursor="pointer"><span class="vol-btn-text">+</span></div>
+  </div>
+  <div class="setting-row">
+    <span class="setting-label">Music Volume</span>
+    <div id="mus-down" class="vol-btn" cursor="pointer"><span class="vol-btn-text">-</span></div>
+    <span id="mus-val" class="setting-value">60%</span>
+    <div id="mus-up" class="vol-btn" cursor="pointer"><span class="vol-btn-text">+</span></div>
+  </div>
+  <div class="setting-row">
+    <span class="setting-label">Theme</span>
+    <span id="theme-name" class="setting-value">Midnight</span>
+  </div>
+  <div class="theme-row">
+    <div id="theme-0" class="theme-btn" style="background-color: #00ffff; border-color: #00ffff" cursor="pointer"></div>
+    <div id="theme-1" class="theme-btn" style="background-color: #ff0055; border-color: #ff0055" cursor="pointer"></div>
+    <div id="theme-2" class="theme-btn" style="background-color: #00ff88; border-color: #00ff88" cursor="pointer"></div>
+    <div id="theme-3" class="theme-btn" style="background-color: #ff8800; border-color: #ff8800" cursor="pointer"></div>
+    <div id="theme-4" class="theme-btn" style="background-color: #aa00ff; border-color: #aa00ff" cursor="pointer"></div>
+  </div>
+  <div id="settings-back" class="back-btn" cursor="pointer">
+    <span class="back-text">BACK</span>
+  </div>
+</div>

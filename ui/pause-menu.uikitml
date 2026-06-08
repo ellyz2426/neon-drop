@@ -1,0 +1,72 @@
+<style>
+  .pause-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.92);
+    border-color: #ffff00;
+    border-width: 0.1;
+    border-radius: 1.2;
+    gap: 2;
+    min-width: 24;
+  }
+  .pause-title {
+    font-size: 4;
+    color: #ffff00;
+    font-weight: bold;
+    letter-spacing: 0.2;
+  }
+  .pause-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18;
+    height: 3.5;
+    background-color: rgba(255, 255, 0, 0.08);
+    border-color: #aaaa00;
+    border-width: 0.08;
+    border-radius: 0.6;
+    cursor: pointer;
+  }
+  .pause-btn:hover {
+    background-color: rgba(255, 255, 0, 0.2);
+  }
+  .pause-btn-text {
+    font-size: 1.8;
+    color: #ffff00;
+    font-weight: bold;
+  }
+  .pause-btn-danger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18;
+    height: 3;
+    background-color: rgba(255, 0, 80, 0.08);
+    border-color: #883344;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+  }
+  .pause-btn-danger:hover {
+    background-color: rgba(255, 0, 80, 0.15);
+  }
+  .danger-text {
+    font-size: 1.5;
+    color: #ff5577;
+    font-weight: bold;
+  }
+</style>
+<div class="pause-root">
+  <span class="pause-title">PAUSED</span>
+  <div id="pause-resume" class="pause-btn" cursor="pointer">
+    <span class="pause-btn-text">RESUME</span>
+  </div>
+  <div id="pause-restart" class="pause-btn" cursor="pointer">
+    <span class="pause-btn-text">RESTART</span>
+  </div>
+  <div id="pause-quit" class="pause-btn-danger" cursor="pointer">
+    <span class="danger-text">QUIT TO MENU</span>
+  </div>
+</div>
