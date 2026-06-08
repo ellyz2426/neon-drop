@@ -127,6 +127,12 @@
     <div id="theme-6" class="theme-btn" style="background-color: #ffcc00; border-color: #ffcc00" cursor="pointer"></div>
     <div id="theme-7" class="theme-btn" style="background-color: #0088ff; border-color: #0088ff" cursor="pointer"></div>
   </div>
+  <div class="setting-row">
+    <span class="setting-label">Difficulty</span>
+    <div id="diff-down" class="vol-btn" cursor="pointer"><span class="vol-btn-text">-</span></div>
+    <span id="diff-val" class="setting-value">Normal</span>
+    <div id="diff-up" class="vol-btn" cursor="pointer"><span class="vol-btn-text">+</span></div>
+  </div>
   <div id="settings-back" class="back-btn" cursor="pointer">
     <span class="back-text">BACK</span>
   </div>

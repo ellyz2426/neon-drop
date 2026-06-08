@@ -49,7 +49,12 @@ interface SaveData {
   bestLevel: number;
   unlockedAch: string[];
   skinIdx: number;
-  settings: { sfxVol: number; musVol: number; themeIdx: number };
+  settings: { sfxVol: number; musVol: number; themeIdx: number; difficulty: number };
+  xp: number;
+  playerLevel: number;
+  dailyStreak: number;
+  lastDailyDate: string;
+  totalBoardClears: number;
 }
 
 // ============================================================
@@ -119,6 +124,36 @@ const SPRINT_TARGET = 40;
 const SURVIVAL_SPEEDUP = 0.04;
 const NOTIFY_DURATION = 2.5;
 const POWERUP_COMBO_THRESHOLD = 3;
+
+// XP system
+const XP_PER_GAME = 50;
+const XP_PER_CLEAR = 2;
+const XP_PER_LEVEL = 25;
+const XP_PER_COMBO = 10;
+const XP_PER_BOARD_CLEAR = 200;
+const XP_BASE_LEVEL_REQ = 200;
+const XP_LEVEL_GROWTH = 1.15;
+const PLAYER_TITLES = [
+  'Novice', 'Rookie', 'Apprentice', 'Dropper', 'Matcher',
+  'Chainer', 'Comboist', 'Expert', 'Master', 'Champion',
+  'Legend', 'Grandmaster', 'Neon Lord', 'Orb Sage', 'Void Walker',
+  'Transcendent', 'Mythic', 'Cosmic', 'Eternal', 'Omega',
+];
+
+function xpForLevel(lvl: number): number {
+  return Math.floor(XP_BASE_LEVEL_REQ * Math.pow(XP_LEVEL_GROWTH, lvl - 1));
+}
+
+function getPlayerTitle(lvl: number): string {
+  return PLAYER_TITLES[Math.min(lvl, PLAYER_TITLES.length - 1)];
+}
+
+// Difficulty multipliers
+const DIFFICULTIES = [
+  { name: 'Easy', speedMult: 1.5, scoreMult: 0.7 },
+  { name: 'Normal', speedMult: 1.0, scoreMult: 1.0 },
+  { name: 'Hard', speedMult: 0.6, scoreMult: 1.5 },
+];
 
 const MODE_NAMES: Record<GameMode, string> = {
   classic: 'Classic', endless: 'Endless', timeAttack: 'Time Attack',
@@ -208,6 +243,23 @@ const ACHIEVEMENT_DEFS: AchievementDef[] = [
   { id: 'drops_100', name: 'Dropper', desc: 'Drop 100 orbs in one game', icon: '★' },
   { id: 'drops_500', name: 'Rain Maker', desc: 'Drop 500 orbs in one game', icon: '◇' },
   { id: 'triple_powerup', name: 'Fully Loaded', desc: 'Have 3 power-ups at once', icon: '◆' },
+  { id: 'player_lvl_5', name: 'Rising Star', desc: 'Reach player level 5', icon: '★' },
+  { id: 'player_lvl_10', name: 'Experienced', desc: 'Reach player level 10', icon: '◆' },
+  { id: 'player_lvl_20', name: 'Seasoned Pro', desc: 'Reach player level 20', icon: '◇' },
+  { id: 'hard_mode', name: 'Hard Mode', desc: 'Score 3,000 on Hard difficulty', icon: '◇' },
+  { id: 'board_clear_3', name: 'Clean Sweep', desc: 'Clear the board 3 times total', icon: '◆' },
+  { id: 'use_shuffle', name: 'Mixer', desc: 'Use the Shuffle power-up', icon: '★' },
+  { id: 'use_freeze', name: 'Ice Age', desc: 'Use the Freeze power-up', icon: '★' },
+  { id: 'use_colclear', name: 'Column Crusher', desc: 'Use the Column Clear power-up', icon: '★' },
+  { id: 'score_100000', name: 'Score King', desc: 'Score 100,000 in a single game', icon: '◇' },
+  { id: 'all_modes', name: 'Mode Master', desc: 'Play every game mode at least once', icon: '◇' },
+  { id: 'zen_10k', name: 'Inner Peace', desc: 'Score 10,000 in Zen mode', icon: '◆' },
+  { id: 'gravity_5k', name: 'Speed Demon 2', desc: 'Score 5,000 in Gravity mode', icon: '◇' },
+  { id: 'total_games_200', name: 'Addicted', desc: 'Play 200 games total', icon: '◇' },
+  { id: 'colorlimit_3k', name: 'Color Master', desc: 'Score 3,000 in Color Limit mode', icon: '◆' },
+  { id: 'survival_lvl20', name: 'Iron Will', desc: 'Reach level 20 in Survival', icon: '◇' },
+  { id: 'xp_10k', name: 'XP Farmer', desc: 'Earn 10,000 total XP', icon: '◆' },
+  { id: 'perfect_sprint', name: 'Perfect Sprint', desc: 'Complete Sprint in under 60 seconds', icon: '◇' },
 ];
 
 const ACH_PER_PAGE = 8;
@@ -381,6 +433,12 @@ function loadSave(): SaveData {
       if (!parsed.bestLevel) parsed.bestLevel = 0;
       if (!parsed.unlockedAch) parsed.unlockedAch = [];
       if (parsed.skinIdx === undefined) parsed.skinIdx = 0;
+      if (parsed.xp === undefined) parsed.xp = 0;
+      if (parsed.playerLevel === undefined) parsed.playerLevel = 0;
+      if (parsed.dailyStreak === undefined) parsed.dailyStreak = 0;
+      if (!parsed.lastDailyDate) parsed.lastDailyDate = '';
+      if (parsed.totalBoardClears === undefined) parsed.totalBoardClears = 0;
+      if (!parsed.settings.difficulty && parsed.settings.difficulty !== 0) parsed.settings.difficulty = 1;
       return parsed;
     }
   } catch { /* ignore */ }
@@ -388,7 +446,8 @@ function loadSave(): SaveData {
     highScores: {}, totalGames: 0, totalScore: 0, totalClears: 0,
     totalCascades: 0, totalDrops: 0, totalPowerUps: 0, bestCombo: 0,
     bestLevel: 0, unlockedAch: [], skinIdx: 0,
-    settings: { sfxVol: 0.8, musVol: 0.6, themeIdx: 0 },
+    settings: { sfxVol: 0.8, musVol: 0.6, themeIdx: 0, difficulty: 1 },
+    xp: 0, playerLevel: 0, dailyStreak: 0, lastDailyDate: '', totalBoardClears: 0,
   };
 }
 function writeSave(s: SaveData) {
@@ -492,6 +551,7 @@ async function main() {
   audio.musVol = save.settings.musVol;
   let themeIdx = save.settings.themeIdx;
   let skinIdx = save.skinIdx;
+  let difficulty = save.settings.difficulty ?? 1;
 
   // ---- Scene ----
   const scene = world.scene;
@@ -830,10 +890,11 @@ async function main() {
   }
 
   function getDropDelay(): number {
-    if (gameMode === 'zen' || gameMode === 'endless') return BASE_DROP_DELAY;
-    if (gameMode === 'survival') return Math.max(MIN_DROP_DELAY, BASE_DROP_DELAY - (level - 1) * SURVIVAL_SPEEDUP);
-    if (gameMode === 'gravity') return Math.max(MIN_DROP_DELAY * 0.5, (BASE_DROP_DELAY / 2) - (level - 1) * DELAY_DEC);
-    return Math.max(MIN_DROP_DELAY, BASE_DROP_DELAY - (level - 1) * DELAY_DEC);
+    const diffMult = DIFFICULTIES[difficulty]?.speedMult ?? 1.0;
+    if (gameMode === 'zen' || gameMode === 'endless') return BASE_DROP_DELAY * diffMult;
+    if (gameMode === 'survival') return Math.max(MIN_DROP_DELAY, (BASE_DROP_DELAY - (level - 1) * SURVIVAL_SPEEDUP) * diffMult);
+    if (gameMode === 'gravity') return Math.max(MIN_DROP_DELAY * 0.5, ((BASE_DROP_DELAY / 2) - (level - 1) * DELAY_DEC) * diffMult);
+    return Math.max(MIN_DROP_DELAY, (BASE_DROP_DELAY - (level - 1) * DELAY_DEC) * diffMult);
   }
 
   function calcScore(count: number, chain: number): number {
@@ -841,10 +902,11 @@ async function main() {
     const groupBonus = count > 3 ? (count - 3) * 20 : 0;
     const matchSizeBonus = count >= 5 ? (count - 4) * 50 : 0;
     const chainMult = Math.max(1, chain);
+    const diffMult = DIFFICULTIES[difficulty]?.scoreMult ?? 1.0;
     if (gameMode === 'cascade') {
-      return chain > 1 ? (base + groupBonus + matchSizeBonus) * chainMult * 2 : 0;
+      return Math.floor(chain > 1 ? (base + groupBonus + matchSizeBonus) * chainMult * 2 * diffMult : 0);
     }
-    return (base + groupBonus + matchSizeBonus) * chainMult;
+    return Math.floor((base + groupBonus + matchSizeBonus) * chainMult * diffMult);
   }
 
   // ---- Clear Grid Visuals ----
@@ -928,6 +990,27 @@ async function main() {
         case 'drops_100': unlocked = dropsThisGame >= 100; break;
         case 'drops_500': unlocked = dropsThisGame >= 500; break;
         case 'triple_powerup': unlocked = heldPowerUps.every(p => p !== null); break;
+        case 'player_lvl_5': unlocked = (save.playerLevel || 0) >= 5; break;
+        case 'player_lvl_10': unlocked = (save.playerLevel || 0) >= 10; break;
+        case 'player_lvl_20': unlocked = (save.playerLevel || 0) >= 20; break;
+        case 'hard_mode': unlocked = difficulty === 2 && score >= 3000; break;
+        case 'board_clear_3': unlocked = (save.totalBoardClears || 0) >= 3; break;
+        case 'use_shuffle': unlocked = (save as any)._usedShuffle === true; break;
+        case 'use_freeze': unlocked = (save as any)._usedFreeze === true; break;
+        case 'use_colclear': unlocked = (save as any)._usedColClear === true; break;
+        case 'score_100000': unlocked = score >= 100000; break;
+        case 'all_modes': {
+          const modes = ['classic', 'endless', 'timeAttack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity', 'daily', 'puzzle'];
+          unlocked = modes.every(m => (save.highScores[m] || 0) > 0);
+          break;
+        }
+        case 'zen_10k': unlocked = gameMode === 'zen' && score >= 10000; break;
+        case 'gravity_5k': unlocked = gameMode === 'gravity' && score >= 5000; break;
+        case 'total_games_200': unlocked = save.totalGames >= 200; break;
+        case 'colorlimit_3k': unlocked = gameMode === 'colorlimit' && score >= 3000; break;
+        case 'survival_lvl20': unlocked = gameMode === 'survival' && level >= 20; break;
+        case 'xp_10k': unlocked = (save.xp || 0) + xpForLevel(save.playerLevel || 0) * (save.playerLevel || 0) >= 10000; break;
+        case 'perfect_sprint': unlocked = gameMode === 'sprint' && sprintClears >= SPRINT_TARGET && gameTimer < 60; break;
       }
       if (unlocked) {
         save.unlockedAch.push(ach.id);
@@ -991,6 +1074,10 @@ async function main() {
     heldPowerUps[slotIdx] = null;
     usedPowerUpsThisGame++;
     save.totalPowerUps++;
+    // Track specific power-up usage for achievements
+    if (type === 'shuffle') (save as any)._usedShuffle = true;
+    if (type === 'freezeTimer') (save as any)._usedFreeze = true;
+    if (type === 'columnClear') (save as any)._usedColClear = true;
     writeSave(save);
 
     switch (type) {
@@ -1276,6 +1363,16 @@ async function main() {
         });
       }
       st.getElementById('settings-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
+      st.getElementById('diff-down')?.addEventListener('click', () => {
+        difficulty = Math.max(0, difficulty - 1);
+        save.settings.difficulty = difficulty;
+        writeSave(save); updateSettingsUI(); audio.play('select');
+      });
+      st.getElementById('diff-up')?.addEventListener('click', () => {
+        difficulty = Math.min(DIFFICULTIES.length - 1, difficulty + 1);
+        save.settings.difficulty = difficulty;
+        writeSave(save); updateSettingsUI(); audio.play('select');
+      });
     }
 
     // Help
@@ -1373,6 +1470,18 @@ async function main() {
     if (!doc) return;
     const hs = doc.getElementById('menu-highscore');
     if (hs && (hs as any).text) (hs as any).text.value = `${save.highScores[gameMode] || 0}`;
+    // Player level info
+    const ptEl = doc.getElementById('menu-player-title');
+    if (ptEl && (ptEl as any).text) (ptEl as any).text.value = getPlayerTitle(save.playerLevel || 0);
+    const plEl = doc.getElementById('menu-player-level');
+    if (plEl && (plEl as any).text) (plEl as any).text.value = `Level ${save.playerLevel || 0}`;
+    // XP bar
+    const xpFill = doc.getElementById('menu-xp-fill');
+    if (xpFill) {
+      const needed = xpForLevel((save.playerLevel || 0) + 1);
+      const pct = needed > 0 ? Math.min(100, Math.floor(((save.xp || 0) / needed) * 100)) : 0;
+      try { (xpFill as any).width = { value: `${pct}%` }; } catch { /* */ }
+    }
   }
 
   function updateModeSelectUI() {
@@ -1422,6 +1531,8 @@ async function main() {
     if (musEl && (musEl as any).text) (musEl as any).text.value = `${Math.round(audio.musVol * 100)}%`;
     const tn = doc.getElementById('theme-name');
     if (tn && (tn as any).text) (tn as any).text.value = THEMES[themeIdx].name;
+    const diffEl = doc.getElementById('diff-val');
+    if (diffEl && (diffEl as any).text) (diffEl as any).text.value = DIFFICULTIES[difficulty]?.name ?? 'Normal';
   }
 
   function updateAchievementsUI() {
@@ -1624,6 +1735,46 @@ async function main() {
     save.totalDrops += dropsThisGame;
     if (bestComboThisGame > save.bestCombo) save.bestCombo = bestComboThisGame;
     if (level > save.bestLevel) save.bestLevel = level;
+    if (boardClearedThisGame) save.totalBoardClears = (save.totalBoardClears || 0) + 1;
+
+    // XP calculation
+    let xpGained = XP_PER_GAME;
+    xpGained += totalClears * XP_PER_CLEAR;
+    xpGained += (level - 1) * XP_PER_LEVEL;
+    xpGained += (bestComboThisGame > 1 ? (bestComboThisGame - 1) * XP_PER_COMBO : 0);
+    if (boardClearedThisGame) xpGained += XP_PER_BOARD_CLEAR;
+    // Difficulty bonus
+    xpGained = Math.floor(xpGained * (DIFFICULTIES[difficulty]?.scoreMult ?? 1.0));
+
+    save.xp = (save.xp || 0) + xpGained;
+
+    // Level up check
+    let leveled = false;
+    while (save.xp >= xpForLevel(save.playerLevel + 1)) {
+      save.xp -= xpForLevel(save.playerLevel + 1);
+      save.playerLevel++;
+      leveled = true;
+    }
+    if (leveled) {
+      notifyQueue.push({ icon: '⬆', title: 'LEVEL UP', desc: `${getPlayerTitle(save.playerLevel)} (Lv.${save.playerLevel})` });
+      audio.play('levelup');
+    }
+
+    // Daily streak tracking
+    if (gameMode === 'daily') {
+      const today = new Date().toISOString().slice(0, 10);
+      const lastDate = save.lastDailyDate || '';
+      if (lastDate !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        if (lastDate === yesterday) {
+          save.dailyStreak = (save.dailyStreak || 0) + 1;
+        } else {
+          save.dailyStreak = 1;
+        }
+        save.lastDailyDate = today;
+      }
+    }
+
     writeSave(save);
     checkAchievements();
     switchState('gameOver');
@@ -1939,6 +2090,18 @@ async function main() {
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const m = orbMeshes[r][c];
         if (m) { m.rotation.y += dt * 0.3; m.rotation.x += dt * 0.15; }
+      }
+    }
+
+    // Orb glow pulsing (subtle emissive breathing)
+    if (gameState === 'playing') {
+      const pulse = Math.sin(performance.now() / 800) * 0.15 + 1.0;
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const m = orbMeshes[r][c];
+        if (m) {
+          const mat = m.material as MeshStandardMaterial;
+          mat.emissiveIntensity = SKIN_DEFS[skinIdx].emIntensity * pulse;
+        }
       }
     }
   }

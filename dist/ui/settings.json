@@ -343,12 +343,91 @@
             "sourceTag": "span",
             "type": "custom",
             "children": [
+              "Difficulty"
+            ],
+            "properties": {
+              "class": "setting-label"
+            },
+            "dataUid": "uid-30"
+          },
+          {
+            "type": "container",
+            "sourceTag": "div",
+            "children": [
+              {
+                "sourceTag": "span",
+                "type": "custom",
+                "children": [
+                  "-"
+                ],
+                "properties": {
+                  "class": "vol-btn-text"
+                },
+                "dataUid": "uid-32"
+              }
+            ],
+            "properties": {
+              "id": "diff-down",
+              "class": "vol-btn",
+              "cursor": "pointer"
+            },
+            "dataUid": "uid-31"
+          },
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
+              "Normal"
+            ],
+            "properties": {
+              "id": "diff-val",
+              "class": "setting-value"
+            },
+            "dataUid": "uid-33"
+          },
+          {
+            "type": "container",
+            "sourceTag": "div",
+            "children": [
+              {
+                "sourceTag": "span",
+                "type": "custom",
+                "children": [
+                  "+"
+                ],
+                "properties": {
+                  "class": "vol-btn-text"
+                },
+                "dataUid": "uid-35"
+              }
+            ],
+            "properties": {
+              "id": "diff-up",
+              "class": "vol-btn",
+              "cursor": "pointer"
+            },
+            "dataUid": "uid-34"
+          }
+        ],
+        "properties": {
+          "class": "setting-row"
+        },
+        "dataUid": "uid-29"
+      },
+      {
+        "type": "container",
+        "sourceTag": "div",
+        "children": [
+          {
+            "sourceTag": "span",
+            "type": "custom",
+            "children": [
               "BACK"
             ],
             "properties": {
               "class": "back-text"
             },
-            "dataUid": "uid-30"
+            "dataUid": "uid-37"
           }
         ],
         "properties": {
@@ -356,7 +435,7 @@
           "class": "back-btn",
           "cursor": "pointer"
         },
-        "dataUid": "uid-29"
+        "dataUid": "uid-36"
       }
     ],
     "properties": {
@@ -604,7 +683,7 @@
         "column": 0
       },
       "end": {
-        "line": 132,
+        "line": 138,
         "column": 6
       }
     },
@@ -884,7 +963,7 @@
         "column": 2
       },
       "end": {
-        "line": 131,
+        "line": 134,
         "column": 8
       }
     },
@@ -895,6 +974,76 @@
       },
       "end": {
         "line": 130,
+        "column": 49
+      }
+    },
+    "uid-31": {
+      "start": {
+        "line": 131,
+        "column": 4
+      },
+      "end": {
+        "line": 131,
+        "column": 98
+      }
+    },
+    "uid-32": {
+      "start": {
+        "line": 131,
+        "column": 57
+      },
+      "end": {
+        "line": 131,
+        "column": 92
+      }
+    },
+    "uid-33": {
+      "start": {
+        "line": 132,
+        "column": 4
+      },
+      "end": {
+        "line": 132,
+        "column": 59
+      }
+    },
+    "uid-34": {
+      "start": {
+        "line": 133,
+        "column": 4
+      },
+      "end": {
+        "line": 133,
+        "column": 96
+      }
+    },
+    "uid-35": {
+      "start": {
+        "line": 133,
+        "column": 55
+      },
+      "end": {
+        "line": 133,
+        "column": 90
+      }
+    },
+    "uid-36": {
+      "start": {
+        "line": 135,
+        "column": 2
+      },
+      "end": {
+        "line": 137,
+        "column": 8
+      }
+    },
+    "uid-37": {
+      "start": {
+        "line": 136,
+        "column": 4
+      },
+      "end": {
+        "line": 136,
         "column": 39
       }
     }
