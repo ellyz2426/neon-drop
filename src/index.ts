@@ -844,6 +844,30 @@ async function main() {
   let shakeTimer = 0;
   const gridBasePos = new Vector3(GRID_CX, GRID_BY, GRID_Z);
 
+  // ---- Orb Landing Squish ----
+  interface SquishAnim { mesh: Mesh; timer: number; duration: number; }
+  const squishAnims: SquishAnim[] = [];
+
+  function triggerSquish(mesh: Mesh) {
+    squishAnims.push({ mesh, timer: 0, duration: 0.2 });
+  }
+
+  function updateSquishAnims(dt: number) {
+    for (let i = squishAnims.length - 1; i >= 0; i--) {
+      const s = squishAnims[i];
+      s.timer += dt;
+      const t = s.timer / s.duration;
+      if (t >= 1) {
+        s.mesh.scale.set(1, 1, 1);
+        squishAnims.splice(i, 1);
+        continue;
+      }
+      // Squish: flatten vertically then spring back
+      const squish = Math.sin(t * Math.PI) * 0.3;
+      s.mesh.scale.set(1 + squish * 0.5, 1 - squish, 1 + squish * 0.5);
+    }
+  }
+
   function triggerScreenShake(intensity: number) {
     shakeIntensity = Math.min(0.02, intensity);
     shakeTimer = 0.3;
@@ -1962,6 +1986,7 @@ async function main() {
     dropsThisGame++;
     placeOrb(targetRow, selectedCol, currentColor);
     triggerLandingFlash(targetRow, selectedCol, currentColor);
+    if (orbMeshes[targetRow][selectedCol]) triggerSquish(orbMeshes[targetRow][selectedCol]!);
     removeActiveOrb();
     processAfterPlace();
   }
@@ -2174,6 +2199,7 @@ async function main() {
     updateLandingFlash(dt);
     updateBorderGlow(dt);
     updateScreenShake(dt);
+    updateSquishAnims(dt);
 
     if (gameState === 'playing') {
       handleInput(dt);
@@ -2237,6 +2263,8 @@ async function main() {
             removeActiveOrb();
             placeOrb(dropTargetRow, selectedCol, currentColor);
             triggerLandingFlash(dropTargetRow, selectedCol, currentColor);
+            // Squish animation on the placed orb
+            if (orbMeshes[dropTargetRow][selectedCol]) triggerSquish(orbMeshes[dropTargetRow][selectedCol]!);
             processAfterPlace();
           }
           break;
