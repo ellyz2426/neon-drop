@@ -140,6 +140,10 @@
     <span class="go-label">Power-ups Used</span>
     <span id="go-powerups" class="go-value">0</span>
   </div>
+  <div class="go-row">
+    <span class="go-label">Time</span>
+    <span id="go-time" class="go-value">0:00</span>
+  </div>
   <div class="go-divider"></div>
   <div class="go-xp-row">
     <span class="go-xp-label">XP Earned</span>

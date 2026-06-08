@@ -260,6 +260,17 @@ const ACHIEVEMENT_DEFS: AchievementDef[] = [
   { id: 'survival_lvl20', name: 'Iron Will', desc: 'Reach level 20 in Survival', icon: '◇' },
   { id: 'xp_10k', name: 'XP Farmer', desc: 'Earn 10,000 total XP', icon: '◆' },
   { id: 'perfect_sprint', name: 'Perfect Sprint', desc: 'Complete Sprint in under 60 seconds', icon: '◇' },
+  // Round 7 achievements
+  { id: 'combo_x20', name: 'Ultrachain', desc: 'Reach a 20x combo chain', icon: '◇' },
+  { id: 'score_200000', name: 'Score Emperor', desc: 'Score 200,000 in a single game', icon: '◇' },
+  { id: 'total_clears_5000', name: 'Mass Extinction', desc: 'Clear 5,000 orbs total', icon: '◆' },
+  { id: 'total_clears_10000', name: 'Orb Annihilator', desc: 'Clear 10,000 orbs total', icon: '◇' },
+  { id: 'daily_streak_7', name: 'Weekly Warrior', desc: 'Reach a 7-day daily streak', icon: '◆' },
+  { id: 'daily_streak_30', name: 'Monthly Master', desc: 'Reach a 30-day daily streak', icon: '◇' },
+  { id: 'total_score_500k', name: 'Half Million Club', desc: 'Accumulate 500,000 total score', icon: '◇' },
+  { id: 'use_all_powerups', name: 'Arsenal', desc: 'Use every power-up type at least once', icon: '◆' },
+  { id: 'board_clear_10', name: 'Spotless', desc: 'Clear the board 10 times total', icon: '◇' },
+  { id: 'endless_50k', name: 'Eternity', desc: 'Score 50,000 in Endless mode', icon: '◇' },
 ];
 
 const ACH_PER_PAGE = 8;
@@ -828,6 +839,28 @@ async function main() {
   // ---- Column Highlight Pulse ----
   let columnPulseTime = 0;
 
+  // ---- Screen Shake ----
+  let shakeIntensity = 0;
+  let shakeTimer = 0;
+  const gridBasePos = new Vector3(GRID_CX, GRID_BY, GRID_Z);
+
+  function triggerScreenShake(intensity: number) {
+    shakeIntensity = Math.min(0.02, intensity);
+    shakeTimer = 0.3;
+  }
+
+  function updateScreenShake(dt: number) {
+    if (shakeTimer > 0) {
+      shakeTimer -= dt;
+      const t = shakeTimer / 0.3;
+      const dx = (Math.random() - 0.5) * 2 * shakeIntensity * t;
+      const dy = (Math.random() - 0.5) * 2 * shakeIntensity * t;
+      gridFrameGrp.position.set(gridBasePos.x + dx, gridBasePos.y + dy, gridBasePos.z);
+    } else if (gridFrameGrp.position.x !== gridBasePos.x || gridFrameGrp.position.y !== gridBasePos.y) {
+      gridFrameGrp.position.copy(gridBasePos);
+    }
+  }
+
   function triggerComboFlash(chain: number, color: Color) {
     comboFlashLight.color.copy(color);
     comboFlashIntensity = Math.min(3.0, chain * 0.5);
@@ -845,21 +878,13 @@ async function main() {
   interface ScorePopup { mesh: Mesh; age: number; }
   const scorePopups: ScorePopup[] = [];
 
-  // Simple text-like visual: glowing sphere with text - we use particles in a cluster
+  // Simple text-like visual: glowing sphere with text - we use pooled particles
   function spawnScoreEffect(pos: Vector3, pts: number, color: Color) {
     // Create a burst of particles proportional to points
     const count = Math.min(20, Math.max(4, Math.floor(pts / 50)));
-    for (let i = 0; i < count; i++) {
-      const mat = new MeshBasicMaterial({ color, transparent: true, opacity: 1, blending: AdditiveBlending });
-      const size = 0.005 + (pts / 5000) * 0.01;
-      const geo = new SphereGeometry(size, 4, 3);
-      const m = new Mesh(geo, mat);
-      m.position.copy(pos);
-      const angle = (i / count) * Math.PI * 2;
-      const vel = new Vector3(Math.cos(angle) * 0.8, 1.5 + Math.random(), Math.sin(angle) * 0.3);
-      scene.add(m);
-      particles.push({ mesh: m, vel, age: 0, life: 0.8 + Math.random() * 0.4 });
-    }
+    const burstPos = pos.clone();
+    burstPos.y += 0.03;
+    spawnParticlesPooled(burstPos, color, count);
   }
 
   // ---- Clear Animations ----
@@ -1105,6 +1130,17 @@ async function main() {
         case 'survival_lvl20': unlocked = gameMode === 'survival' && level >= 20; break;
         case 'xp_10k': unlocked = (save.xp || 0) + xpForLevel(save.playerLevel || 0) * (save.playerLevel || 0) >= 10000; break;
         case 'perfect_sprint': unlocked = gameMode === 'sprint' && sprintClears >= SPRINT_TARGET && gameTimer < 60; break;
+        // Round 7 achievements
+        case 'combo_x20': unlocked = comboChain >= 20 || bestComboThisGame >= 20 || save.bestCombo >= 20; break;
+        case 'score_200000': unlocked = score >= 200000; break;
+        case 'total_clears_5000': unlocked = save.totalClears + totalClears >= 5000; break;
+        case 'total_clears_10000': unlocked = save.totalClears + totalClears >= 10000; break;
+        case 'daily_streak_7': unlocked = (save.dailyStreak || 0) >= 7; break;
+        case 'daily_streak_30': unlocked = (save.dailyStreak || 0) >= 30; break;
+        case 'total_score_500k': unlocked = save.totalScore + score >= 500000; break;
+        case 'use_all_powerups': unlocked = !!(save as any)._usedRowBomb && !!(save as any)._usedColorBomb && !!(save as any)._usedWildOrb && !!(save as any)._usedShuffle && !!(save as any)._usedFreeze && !!(save as any)._usedColClear; break;
+        case 'board_clear_10': unlocked = (save.totalBoardClears || 0) >= 10; break;
+        case 'endless_50k': unlocked = gameMode === 'endless' && score >= 50000; break;
       }
       if (unlocked) {
         save.unlockedAch.push(ach.id);
@@ -1172,6 +1208,9 @@ async function main() {
     if (type === 'shuffle') (save as any)._usedShuffle = true;
     if (type === 'freezeTimer') (save as any)._usedFreeze = true;
     if (type === 'columnClear') (save as any)._usedColClear = true;
+    if (type === 'rowBomb') (save as any)._usedRowBomb = true;
+    if (type === 'colorBomb') (save as any)._usedColorBomb = true;
+    if (type === 'wildOrb') (save as any)._usedWildOrb = true;
     writeSave(save);
 
     switch (type) {
@@ -1622,6 +1661,11 @@ async function main() {
     setText('go-combo', `x${bestComboThisGame}`);
     setText('go-cascades', `${totalCascades}`);
     setText('go-powerups', `${usedPowerUpsThisGame}`);
+    // Time played
+    const secs = Math.floor(gameTimer);
+    const mins = Math.floor(secs / 60);
+    const rem = secs % 60;
+    setText('go-time', `${mins}:${rem < 10 ? '0' : ''}${rem}`);
     setText('go-xp', `+${lastXpGained}`);
     setText('go-plevel', `Lv.${save.playerLevel} ${getPlayerTitle(save.playerLevel)}`);
     const prev = save.highScores[gameMode] || 0;
@@ -1962,6 +2006,7 @@ async function main() {
           triggerComboFlash(comboChain, new Color(ORB_COLORS[flashColorIdx - 1].hex));
         }
         triggerBorderGlow(comboChain);
+        triggerScreenShake(comboChain * 0.004);
       }
 
       // Grant power-up on combo threshold
@@ -2128,6 +2173,7 @@ async function main() {
     updateComboFlash(dt);
     updateLandingFlash(dt);
     updateBorderGlow(dt);
+    updateScreenShake(dt);
 
     if (gameState === 'playing') {
       handleInput(dt);
@@ -2164,6 +2210,10 @@ async function main() {
           if (ghostOrb && SKIN_DEFS[skinIdx].geoType !== 'sphere') {
             ghostOrb.rotation.y += dt * 0.8;
             ghostOrb.rotation.x += dt * 0.4;
+          }
+          // Always track game time
+          if (gameMode !== 'timeAttack' && gameMode !== 'survival') {
+            gameTimer += dt;
           }
           if (gameMode === 'timeAttack') {
             gameTimer += dt;
