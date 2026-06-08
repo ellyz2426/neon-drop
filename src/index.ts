@@ -19,7 +19,7 @@ import {
 // ============================================================
 // TYPES
 // ============================================================
-type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help' | 'achievements' | 'stats' | 'skins';
+type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help' | 'achievements' | 'stats' | 'skins' | 'tutorial';
 type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen' | 'survival' | 'cascade' | 'colorlimit' | 'gravity' | 'daily' | 'puzzle';
 type PlayPhase = 'selecting' | 'dropping' | 'clearing' | 'cascading' | 'nextOrb' | 'countdown';
 type PowerUpType = 'rowBomb' | 'colorBomb' | 'wildOrb' | 'shuffle' | 'freezeTimer' | 'columnClear';
@@ -725,34 +725,108 @@ async function main() {
   const particles: Particle[] = [];
   const particleGeo = new SphereGeometry(0.008, 6, 4);
 
-  function spawnParticles(pos: Vector3, color: Color, count: number) {
-    for (let i = 0; i < count; i++) {
-      const mat = new MeshBasicMaterial({ color, transparent: true, opacity: 1 });
-      const m = new Mesh(particleGeo, mat);
-      m.position.copy(pos);
-      const vel = new Vector3((Math.random() - 0.5) * 2, Math.random() * 2 + 0.5, (Math.random() - 0.5) * 0.5);
-      scene.add(m);
-      particles.push({ mesh: m, vel, age: 0, life: 0.5 + Math.random() * 0.3 });
-    }
-  }
-
-  function updateParticles(dt: number) {
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.age += dt;
-      if (p.age >= p.life) { scene.remove(p.mesh); particles.splice(i, 1); continue; }
-      p.vel.y -= 3 * dt;
-      p.mesh.position.addScaledVector(p.vel, dt);
-      (p.mesh.material as MeshBasicMaterial).opacity = 1 - p.age / p.life;
-      p.mesh.scale.setScalar(1 - p.age / p.life);
-    }
-  }
-
   // ---- Combo Flash Effect ----
   let comboFlashIntensity = 0;
   const comboFlashLight = new PointLight(0xffffff, 0, 15);
   comboFlashLight.position.set(GRID_CX, GRID_BY + GRID_H / 2, GRID_Z + 0.5);
   scene.add(comboFlashLight);
+
+  // ---- Landing Impact Flash ----
+  const landingFlashLight = new PointLight(0xffffff, 0, 8);
+  landingFlashLight.position.set(GRID_CX, GRID_BY, GRID_Z + 0.3);
+  scene.add(landingFlashLight);
+
+  function triggerLandingFlash(row: number, col: number, colorIdx: number) {
+    const pos = gridToWorld(row, col);
+    landingFlashLight.position.set(pos.x, pos.y, pos.z + 0.3);
+    landingFlashLight.color.set(ORB_COLORS[colorIdx - 1]?.hex || '#ffffff');
+    landingFlashLight.intensity = 1.5;
+    landingFlashTimer = 0.25;
+  }
+
+  function updateLandingFlash(dt: number) {
+    if (landingFlashTimer > 0) {
+      landingFlashTimer -= dt;
+      landingFlashLight.intensity = Math.max(0, (landingFlashTimer / 0.25) * 1.5);
+    }
+  }
+
+  // ---- Grid Border Glow ----
+  let borderGlowMat: LineBasicMaterial | null = null;
+
+  function triggerBorderGlow(chain: number) {
+    borderGlowIntensity = Math.min(1.0, chain * 0.15);
+    // Pick glow color from theme
+    borderGlowColor.set(THEMES[themeIdx].grid);
+  }
+
+  function updateBorderGlow(dt: number) {
+    if (borderGlowIntensity > 0) {
+      borderGlowIntensity = Math.max(0, borderGlowIntensity - dt * 0.6);
+      // Modulate the grid frame border material opacity
+      const children = gridFrameGrp.children;
+      if (children.length > 0) {
+        const firstChild = children[0];
+        if ((firstChild as any).material && (firstChild as any).material.opacity !== undefined) {
+          const baseBorderOpacity = 0.6;
+          (firstChild as any).material.opacity = baseBorderOpacity + borderGlowIntensity * 0.4;
+          (firstChild as any).material.color.lerp(borderGlowColor, borderGlowIntensity);
+        }
+      }
+    }
+  }
+
+  // ---- Particle Pool System ----
+  function initParticlePool() {
+    if (particlePoolInited) return;
+    for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+      const mat = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+      const m = new Mesh(particleGeo, mat);
+      m.visible = false;
+      scene.add(m);
+      particlePool.push({ mesh: m, vel: new Vector3(), age: 0, life: 0 });
+    }
+    particlePoolInited = true;
+  }
+
+  function spawnParticlesPooled(pos: Vector3, color: Color, count: number) {
+    if (!particlePoolInited) initParticlePool();
+    let spawned = 0;
+    for (let i = 0; i < particlePool.length && spawned < count; i++) {
+      const p = particlePool[i];
+      if (!p.mesh.visible) {
+        p.mesh.position.copy(pos);
+        (p.mesh.material as MeshBasicMaterial).color.copy(color);
+        (p.mesh.material as MeshBasicMaterial).opacity = 1;
+        p.mesh.scale.setScalar(1);
+        p.mesh.visible = true;
+        p.vel.set((Math.random() - 0.5) * 2, Math.random() * 2 + 0.5, (Math.random() - 0.5) * 0.5);
+        p.age = 0;
+        p.life = 0.5 + Math.random() * 0.3;
+        spawned++;
+      }
+    }
+  }
+
+  function updateParticlesPooled(dt: number) {
+    for (const p of particlePool) {
+      if (!p.mesh.visible) continue;
+      p.age += dt;
+      if (p.age >= p.life) {
+        p.mesh.visible = false;
+        (p.mesh.material as MeshBasicMaterial).opacity = 0;
+        continue;
+      }
+      p.vel.y -= 3 * dt;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      const t = 1 - p.age / p.life;
+      (p.mesh.material as MeshBasicMaterial).opacity = t;
+      p.mesh.scale.setScalar(t);
+    }
+  }
+
+  // ---- Column Highlight Pulse ----
+  let columnPulseTime = 0;
 
   function triggerComboFlash(chain: number, color: Color) {
     comboFlashLight.color.copy(color);
@@ -861,6 +935,23 @@ async function main() {
   let skinsUsed = new Set<number>();
   let dailyRng: (() => number) | null = null;
   let freezeTimerRemaining = 0;
+  let lastXpGained = 0;
+
+  // Grid border glow state
+  let borderGlowIntensity = 0;
+  let borderGlowColor = new Color('#00ffff');
+
+  // Landing impact flash state
+  let landingFlashTimer = 0;
+  let landingFlashPos = new Vector3();
+
+  // Tutorial / first-time detection
+  let tutorialShown = false;
+
+  // Particle pool
+  const PARTICLE_POOL_SIZE = 200;
+  const particlePool: Particle[] = [];
+  let particlePoolInited = false;
 
   // Puzzle mode state
   let puzzleLevel = 0;
@@ -919,8 +1010,11 @@ async function main() {
     removeActiveOrb();
     for (const a of clearAnims) scene.remove(a.mesh);
     clearAnims.length = 0;
-    for (const p of particles) scene.remove(p.mesh);
-    particles.length = 0;
+    // Reset particle pool
+    for (const p of particlePool) {
+      p.mesh.visible = false;
+      (p.mesh.material as MeshBasicMaterial).opacity = 0;
+    }
   }
 
   // ---- Achievement Checking ----
@@ -1090,7 +1184,7 @@ async function main() {
             for (let c = 0; c < COLS; c++) {
               if (grid[r][c] !== 0) {
                 const pos = gridToWorld(r, c);
-                spawnParticles(pos, new Color(ORB_COLORS[grid[r][c] - 1].hex), 4);
+                spawnParticlesPooled(pos, new Color(ORB_COLORS[grid[r][c] - 1].hex), 4);
                 grid[r][c] = 0;
                 if (orbMeshes[r][c]) { scene.remove(orbMeshes[r][c]!); orbMeshes[r][c] = null; }
                 totalClears++;
@@ -1113,7 +1207,7 @@ async function main() {
           for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
             if (grid[r][c] === target) {
               const pos = gridToWorld(r, c);
-              spawnParticles(pos, new Color(ORB_COLORS[target - 1].hex), 4);
+              spawnParticlesPooled(pos, new Color(ORB_COLORS[target - 1].hex), 4);
               grid[r][c] = 0;
               if (orbMeshes[r][c]) { scene.remove(orbMeshes[r][c]!); orbMeshes[r][c] = null; }
               totalClears++;
@@ -1177,7 +1271,7 @@ async function main() {
         for (let r = 0; r < ROWS; r++) {
           if (grid[r][selectedCol] !== 0) {
             const pos = gridToWorld(r, selectedCol);
-            spawnParticles(pos, new Color(ORB_COLORS[grid[r][selectedCol] - 1].hex), 4);
+            spawnParticlesPooled(pos, new Color(ORB_COLORS[grid[r][selectedCol] - 1].hex), 4);
             grid[r][selectedCol] = 0;
             if (orbMeshes[r][selectedCol]) { scene.remove(orbMeshes[r][selectedCol]!); orbMeshes[r][selectedCol] = null; }
             totalClears++;
@@ -1272,6 +1366,7 @@ async function main() {
     maxW: 0.35, maxH: 0.12,
     follower: { offset: [0, -0.1, -0.5], behavior: FollowBehavior.PivotY, speed: 8, tolerance: 0.2 },
   });
+  createPanel('tutorial', '/ui/tutorial.json', { pos: [0, 1.5, -2], maxW: 0.85, maxH: 1.3 });
 
   function getPanelDoc(name: string): UIKitDocument | null {
     const p = panels[name];
@@ -1423,6 +1518,17 @@ async function main() {
       }
     }
 
+    // Tutorial
+    const tutDoc = getPanelDoc('tutorial');
+    if (tutDoc) {
+      tutDoc.getElementById('tut-ok')?.addEventListener('click', () => {
+        audio.play('select');
+        tutorialShown = true;
+        // Proceed to actually start the game
+        startGame();
+      });
+    }
+
     return true;
   }
 
@@ -1510,10 +1616,14 @@ async function main() {
     };
     setText('go-score', `${score}`);
     setText('go-mode', MODE_NAMES[gameMode]);
+    setText('go-diff', DIFFICULTIES[difficulty]?.name ?? 'Normal');
     setText('go-level', `${level}`);
     setText('go-clears', `${totalClears}`);
     setText('go-combo', `x${bestComboThisGame}`);
     setText('go-cascades', `${totalCascades}`);
+    setText('go-powerups', `${usedPowerUpsThisGame}`);
+    setText('go-xp', `+${lastXpGained}`);
+    setText('go-plevel', `Lv.${save.playerLevel} ${getPlayerTitle(save.playerLevel)}`);
     const prev = save.highScores[gameMode] || 0;
     const isNewBest = score > prev;
     const nb = doc.getElementById('go-newbest');
@@ -1685,12 +1795,21 @@ async function main() {
         showPanel('skins');
         updateSkinsUI();
         break;
+      case 'tutorial':
+        showPanel('tutorial');
+        break;
     }
     // Always show notify if active
     if (notifyShowing) showPanel('notify');
   }
 
   function startGame() {
+    // Show tutorial on very first game
+    if (save.totalGames === 0 && !tutorialShown) {
+      tutorialShown = true;
+      switchState('tutorial');
+      return;
+    }
     clearAllOrbs();
     grid = makeGrid();
     orbMeshes = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -1745,6 +1864,7 @@ async function main() {
     if (boardClearedThisGame) xpGained += XP_PER_BOARD_CLEAR;
     // Difficulty bonus
     xpGained = Math.floor(xpGained * (DIFFICULTIES[difficulty]?.scoreMult ?? 1.0));
+    lastXpGained = xpGained;
 
     save.xp = (save.xp || 0) + xpGained;
 
@@ -1797,6 +1917,7 @@ async function main() {
     audio.play('drop');
     dropsThisGame++;
     placeOrb(targetRow, selectedCol, currentColor);
+    triggerLandingFlash(targetRow, selectedCol, currentColor);
     removeActiveOrb();
     processAfterPlace();
   }
@@ -1840,6 +1961,7 @@ async function main() {
         if (flashColorIdx > 0) {
           triggerComboFlash(comboChain, new Color(ORB_COLORS[flashColorIdx - 1].hex));
         }
+        triggerBorderGlow(comboChain);
       }
 
       // Grant power-up on combo threshold
@@ -1852,7 +1974,7 @@ async function main() {
         const colorIdx = grid[r][c];
         startClearAnim(r, c, colorIdx);
         const pos = gridToWorld(r, c);
-        spawnParticles(pos, new Color(ORB_COLORS[colorIdx - 1].hex), 6);
+        spawnParticlesPooled(pos, new Color(ORB_COLORS[colorIdx - 1].hex), 6);
       }
       // Score burst effect at the center of the match
       if (pendingMatches.length > 0) {
@@ -1971,7 +2093,12 @@ async function main() {
       audio.play('move');
       moveActiveOrbToCol(selectedCol);
       updateSelectorCol(selectedCol);
+      columnPulseTime = 0;
     }
+    // Column highlight pulse
+    columnPulseTime += dt;
+    const pulse = 0.08 + Math.sin(columnPulseTime * 4) * 0.04;
+    selectorMat.opacity = pulse;
 
     // Drop
     if (kb?.getKeyDown?.('ArrowDown')) dropOrb();
@@ -1996,9 +2123,11 @@ async function main() {
 
     if (!uiBindingsReady) uiBindingsReady = tryBindUI();
 
-    updateParticles(dt);
+    updateParticlesPooled(dt);
     updateNotify(dt);
     updateComboFlash(dt);
+    updateLandingFlash(dt);
+    updateBorderGlow(dt);
 
     if (gameState === 'playing') {
       handleInput(dt);
@@ -2057,6 +2186,7 @@ async function main() {
           if (dropProgress >= 1) {
             removeActiveOrb();
             placeOrb(dropTargetRow, selectedCol, currentColor);
+            triggerLandingFlash(dropTargetRow, selectedCol, currentColor);
             processAfterPlace();
           }
           break;
@@ -2121,6 +2251,7 @@ async function main() {
   } catch { requestAnimationFrame(rafLoop); }
 
   // ---- Initialize ----
+  initParticlePool();
   themesUsed.add(themeIdx);
   switchState('title');
 }

@@ -1,0 +1,98 @@
+<style>
+  .tut-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.92);
+    border-color: #00ffff;
+    border-width: 0.1;
+    border-radius: 1.2;
+    gap: 1.5;
+    min-width: 30;
+  }
+  .tut-title {
+    font-size: 3;
+    color: #00ffff;
+    font-weight: bold;
+  }
+  .tut-subtitle {
+    font-size: 1.8;
+    color: #ff8800;
+    font-weight: bold;
+    margin-bottom: 0.5;
+  }
+  .tut-tip {
+    display: flex;
+    flex-direction: row;
+    width: 26;
+    gap: 1.5;
+    padding: 0.8;
+    align-items: center;
+  }
+  .tut-icon {
+    font-size: 2.5;
+    color: #ff8800;
+    min-width: 3;
+  }
+  .tut-text {
+    font-size: 1.3;
+    color: #aabbcc;
+  }
+  .tut-highlight {
+    color: #00ffff;
+    font-weight: bold;
+  }
+  .tut-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20;
+    height: 3.5;
+    background-color: rgba(0, 255, 255, 0.15);
+    border-color: #00ffff;
+    border-width: 0.08;
+    border-radius: 0.6;
+    cursor: pointer;
+    margin-top: 1;
+  }
+  .tut-btn:hover {
+    background-color: rgba(0, 255, 255, 0.3);
+  }
+  .tut-btn-text {
+    font-size: 2;
+    color: #00ffff;
+    font-weight: bold;
+  }
+</style>
+<div class="tut-root">
+  <span class="tut-title">HOW TO PLAY</span>
+  <span class="tut-subtitle">Welcome to Neon Drop!</span>
+  <div class="tut-tip">
+    <span class="tut-icon">←→</span>
+    <span class="tut-text">Use <span class="tut-highlight">Arrow Keys</span> or <span class="tut-highlight">Thumbstick</span> to move</span>
+  </div>
+  <div class="tut-tip">
+    <span class="tut-icon">↓</span>
+    <span class="tut-text"><span class="tut-highlight">Down Arrow</span> or <span class="tut-highlight">Trigger</span> to drop</span>
+  </div>
+  <div class="tut-tip">
+    <span class="tut-icon">⎵</span>
+    <span class="tut-text"><span class="tut-highlight">Space</span> or <span class="tut-highlight">A Button</span> for instant drop</span>
+  </div>
+  <div class="tut-tip">
+    <span class="tut-icon">★</span>
+    <span class="tut-text">Match <span class="tut-highlight">3+ orbs</span> of the same color to clear</span>
+  </div>
+  <div class="tut-tip">
+    <span class="tut-icon">⚡</span>
+    <span class="tut-text">Chain cascades for <span class="tut-highlight">combo multipliers</span></span>
+  </div>
+  <div class="tut-tip">
+    <span class="tut-icon">⊞</span>
+    <span class="tut-text">Earn <span class="tut-highlight">power-ups</span> from combos (keys 1-3)</span>
+  </div>
+  <div id="tut-ok" class="tut-btn" cursor="pointer">
+    <span class="tut-btn-text">GOT IT!</span>
+  </div>
+</div>

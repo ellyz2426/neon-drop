@@ -8,7 +8,7 @@
     border-color: #ff0055;
     border-width: 0.12;
     border-radius: 1.2;
-    gap: 1.5;
+    gap: 1.2;
     min-width: 28;
   }
   .go-title {
@@ -20,21 +20,20 @@
   .go-subtitle {
     font-size: 1.5;
     color: #607080;
-    margin-bottom: 1;
   }
   .go-row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     width: 22;
-    padding: 0.5;
+    padding: 0.4;
   }
   .go-label {
-    font-size: 1.5;
+    font-size: 1.4;
     color: #607080;
   }
   .go-value {
-    font-size: 1.5;
+    font-size: 1.4;
     color: #00ffff;
     font-weight: bold;
   }
@@ -46,6 +45,32 @@
   .new-best {
     font-size: 2;
     color: #ff8800;
+    font-weight: bold;
+  }
+  .go-divider {
+    width: 22;
+    height: 0.06;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .go-xp-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 22;
+    padding: 0.5;
+    background-color: rgba(170, 0, 255, 0.12);
+    border-color: #aa00ff;
+    border-width: 0.04;
+    border-radius: 0.4;
+  }
+  .go-xp-label {
+    font-size: 1.5;
+    color: #aa00ff;
+    font-weight: bold;
+  }
+  .go-xp-value {
+    font-size: 1.5;
+    color: #cc66ff;
     font-weight: bold;
   }
   .go-btn {
@@ -92,6 +117,7 @@
 <div class="go-root">
   <span class="go-title">GAME OVER</span>
   <span id="go-mode" class="go-subtitle">Classic</span>
+  <span id="go-diff" class="go-subtitle">Normal</span>
   <span id="go-score" class="go-score-big">0</span>
   <span id="go-newbest" class="new-best" style="display: none">★ NEW BEST ★</span>
   <div class="go-row">
@@ -109,6 +135,19 @@
   <div class="go-row">
     <span class="go-label">Cascades</span>
     <span id="go-cascades" class="go-value">0</span>
+  </div>
+  <div class="go-row">
+    <span class="go-label">Power-ups Used</span>
+    <span id="go-powerups" class="go-value">0</span>
+  </div>
+  <div class="go-divider"></div>
+  <div class="go-xp-row">
+    <span class="go-xp-label">XP Earned</span>
+    <span id="go-xp" class="go-xp-value">+0</span>
+  </div>
+  <div class="go-row">
+    <span class="go-label">Player Level</span>
+    <span id="go-plevel" class="go-value">Lv.1</span>
   </div>
   <div id="go-retry" class="go-btn" cursor="pointer">
     <span class="go-btn-text">PLAY AGAIN</span>
