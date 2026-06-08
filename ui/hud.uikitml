@@ -2,7 +2,7 @@
   .hud-root {
     display: flex;
     flex-direction: row;
-    gap: 3;
+    gap: 2.5;
     padding: 1.5;
     background-color: rgba(0, 0, 0, 0.75);
     border-color: #00ffff;
@@ -13,27 +13,32 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 6;
+    min-width: 5;
   }
   .hud-label {
-    font-size: 1;
+    font-size: 0.9;
     color: #607080;
     font-weight: bold;
     letter-spacing: 0.1;
   }
   .hud-value {
-    font-size: 2.8;
+    font-size: 2.5;
     color: #00ffff;
     font-weight: bold;
   }
   .combo-value {
-    font-size: 2.8;
+    font-size: 2.5;
     color: #ff8800;
     font-weight: bold;
   }
+  .level-value {
+    font-size: 2.5;
+    color: #00ff88;
+    font-weight: bold;
+  }
   .mode-label {
-    font-size: 0.9;
-    color: #555555;
+    font-size: 0.7;
+    color: #444444;
   }
 </style>
 <div class="hud-root">
@@ -43,7 +48,7 @@
   </div>
   <div class="hud-block">
     <span class="hud-label">LEVEL</span>
-    <span id="hud-level" class="hud-value">1</span>
+    <span id="hud-level" class="level-value">1</span>
   </div>
   <div class="hud-block">
     <span class="hud-label">COMBO</span>
@@ -52,5 +57,9 @@
   <div class="hud-block">
     <span class="hud-label">CLEARS</span>
     <span id="hud-clears" class="hud-value">0</span>
+  </div>
+  <div class="hud-block">
+    <span id="hud-mode-label" class="hud-label"></span>
+    <span id="hud-mode-value" class="hud-value"></span>
   </div>
 </div>

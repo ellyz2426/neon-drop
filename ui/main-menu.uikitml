@@ -8,7 +8,7 @@
     border-color: #00ffff;
     border-width: 0.12;
     border-radius: 1.2;
-    gap: 2;
+    gap: 1.5;
     min-width: 30;
   }
   .title {
@@ -20,14 +20,14 @@
   .subtitle {
     font-size: 1.6;
     color: #607080;
-    margin-bottom: 2;
+    margin-bottom: 1;
   }
   .menu-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 22;
-    height: 4;
+    height: 3.8;
     background-color: rgba(0, 255, 255, 0.1);
     border-color: #00ffff;
     border-width: 0.08;
@@ -47,11 +47,36 @@
     color: #00cccc;
     font-weight: bold;
   }
+  .secondary-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1;
+  }
+  .sec-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 10.5;
+    height: 3;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #444444;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+  }
+  .sec-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .sec-text {
+    font-size: 1.2;
+    color: #888888;
+    font-weight: bold;
+  }
   .high-score-row {
     display: flex;
     flex-direction: row;
     gap: 1;
-    margin-top: 1;
+    margin-top: 0.5;
   }
   .hs-label {
     font-size: 1.2;
@@ -62,24 +87,32 @@
     color: #ff8800;
     font-weight: bold;
   }
+  .version-text {
+    font-size: 0.8;
+    color: #333333;
+  }
 </style>
 <div class="menu-root">
   <span class="title">NEON DROP</span>
-  <span class="subtitle">Match 3 • Drop Puzzle • VR</span>
+  <span class="subtitle">Match 3 · Drop Puzzle · VR</span>
   <div id="btn-start" class="menu-btn" cursor="pointer">
     <span class="btn-text">START GAME</span>
   </div>
   <div id="btn-modes" class="menu-btn" cursor="pointer">
     <span class="btn-text-small">GAME MODES</span>
   </div>
-  <div id="btn-settings" class="menu-btn" cursor="pointer">
-    <span class="btn-text-small">SETTINGS</span>
+  <div class="secondary-row">
+    <div id="btn-achievements" class="sec-btn" cursor="pointer"><span class="sec-text">ACHIEVEMENTS</span></div>
+    <div id="btn-stats" class="sec-btn" cursor="pointer"><span class="sec-text">STATISTICS</span></div>
   </div>
-  <div id="btn-help" class="menu-btn" cursor="pointer">
-    <span class="btn-text-small">CONTROLS</span>
+  <div class="secondary-row">
+    <div id="btn-skins" class="sec-btn" cursor="pointer"><span class="sec-text">ORB SKINS</span></div>
+    <div id="btn-settings" class="sec-btn" cursor="pointer"><span class="sec-text">SETTINGS</span></div>
   </div>
+  <div id="btn-help" class="sec-btn" cursor="pointer"><span class="sec-text">CONTROLS</span></div>
   <div class="high-score-row">
     <span class="hs-label">HIGH SCORE:</span>
     <span id="menu-highscore" class="hs-value">0</span>
   </div>
+  <span class="version-text">v2.0</span>
 </div>

@@ -6,7 +6,7 @@ import {
   World, PanelUI, ScreenSpace, Follower, FollowBehavior,
   PanelDocument, UIKitDocument,
   Mesh, Group, BoxGeometry, SphereGeometry, CylinderGeometry,
-  PlaneGeometry, TorusGeometry,
+  PlaneGeometry, TorusGeometry, IcosahedronGeometry, OctahedronGeometry,
   MeshStandardMaterial, MeshBasicMaterial, LineBasicMaterial,
   Color, Vector3, Quaternion, Euler,
   Fog, AmbientLight, PointLight, DirectionalLight,
@@ -19,16 +19,36 @@ import {
 // ============================================================
 // TYPES
 // ============================================================
-type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help';
-type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen';
+type GameState = 'title' | 'modeSelect' | 'playing' | 'paused' | 'gameOver' | 'settings' | 'help' | 'achievements' | 'stats' | 'skins';
+type GameMode = 'classic' | 'endless' | 'timeAttack' | 'sprint' | 'zen' | 'survival' | 'cascade' | 'colorlimit' | 'gravity';
 type PlayPhase = 'selecting' | 'dropping' | 'clearing' | 'cascading' | 'nextOrb' | 'countdown';
+type PowerUpType = 'rowBomb' | 'colorBomb' | 'wildOrb';
+
+interface AchievementDef {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+}
+
+interface PowerUp {
+  type: PowerUpType;
+  icon: string;
+  name: string;
+}
 
 interface SaveData {
   highScores: Record<string, number>;
   totalGames: number;
+  totalScore: number;
   totalClears: number;
   totalCascades: number;
+  totalDrops: number;
+  totalPowerUps: number;
   bestCombo: number;
+  bestLevel: number;
+  unlockedAch: string[];
+  skinIdx: number;
   settings: { sfxVol: number; musVol: number; themeIdx: number };
 }
 
@@ -62,6 +82,21 @@ const THEMES = [
   { name: 'Void', fog: '#080010', amb: '#1a1a30', grid: '#aa00ff', floor: '#0a001a' },
 ];
 
+const SKIN_DEFS = [
+  { name: 'NEON', desc: 'Classic glowing orbs', roughness: 0.3, metalness: 0.2, emIntensity: 0.6, geoType: 'sphere' as const },
+  { name: 'CRYSTAL', desc: 'Faceted gem orbs', roughness: 0.1, metalness: 0.6, emIntensity: 0.8, geoType: 'icosahedron' as const },
+  { name: 'FLAME', desc: 'Burning ember orbs', roughness: 0.7, metalness: 0.1, emIntensity: 1.2, geoType: 'sphere' as const },
+  { name: 'ICE', desc: 'Frozen crystal orbs', roughness: 0.05, metalness: 0.8, emIntensity: 0.3, geoType: 'octahedron' as const },
+  { name: 'PLASMA', desc: 'Electric energy orbs', roughness: 0.4, metalness: 0.3, emIntensity: 1.5, geoType: 'sphere' as const },
+  { name: 'TOXIC', desc: 'Radioactive glow orbs', roughness: 0.5, metalness: 0.1, emIntensity: 2.0, geoType: 'sphere' as const },
+];
+
+const POWER_UPS: PowerUp[] = [
+  { type: 'rowBomb', icon: '⊞', name: 'Row Bomb' },
+  { type: 'colorBomb', icon: '◉', name: 'Color Bomb' },
+  { type: 'wildOrb', icon: '★', name: 'Wild Orb' },
+];
+
 const BASE_DROP_DELAY = 4.0;
 const MIN_DROP_DELAY = 0.8;
 const DELAY_DEC = 0.25;
@@ -73,10 +108,59 @@ const NEXT_ORB_DELAY = 0.25;
 const COUNTDOWN_TIME = 3.0;
 const TIME_ATTACK_SECS = 120;
 const SPRINT_TARGET = 40;
+const SURVIVAL_SPEEDUP = 0.04;
+const NOTIFY_DURATION = 2.5;
+const POWERUP_COMBO_THRESHOLD = 3;
 
 const MODE_NAMES: Record<GameMode, string> = {
-  classic: 'Classic', endless: 'Endless', timeAttack: 'Time Attack', sprint: 'Sprint', zen: 'Zen',
+  classic: 'Classic', endless: 'Endless', timeAttack: 'Time Attack',
+  sprint: 'Sprint', zen: 'Zen', survival: 'Survival', cascade: 'Cascade Chal.',
+  colorlimit: 'Color Limit', gravity: 'Gravity',
 };
+
+// ============================================================
+// ACHIEVEMENTS
+// ============================================================
+const ACHIEVEMENT_DEFS: AchievementDef[] = [
+  { id: 'first_match', name: 'First Match', desc: 'Clear your first match', icon: '★' },
+  { id: 'combo_x2', name: 'Double Combo', desc: 'Reach a 2x combo chain', icon: '★' },
+  { id: 'combo_x3', name: 'Triple Combo', desc: 'Reach a 3x combo chain', icon: '★' },
+  { id: 'combo_x5', name: 'Pentachain', desc: 'Reach a 5x combo chain', icon: '◆' },
+  { id: 'combo_x8', name: 'Octachain', desc: 'Reach an 8x combo chain', icon: '◆' },
+  { id: 'combo_x10', name: 'Decachain', desc: 'Reach a 10x combo chain', icon: '◇' },
+  { id: 'score_500', name: 'Scorer', desc: 'Score 500 points in one game', icon: '★' },
+  { id: 'score_2000', name: 'High Scorer', desc: 'Score 2,000 points in one game', icon: '★' },
+  { id: 'score_5000', name: 'Pro Scorer', desc: 'Score 5,000 points in one game', icon: '◆' },
+  { id: 'score_10000', name: 'Master Scorer', desc: 'Score 10,000 points in one game', icon: '◆' },
+  { id: 'score_25000', name: 'Legend', desc: 'Score 25,000 points in one game', icon: '◇' },
+  { id: 'level_5', name: 'Rising', desc: 'Reach level 5', icon: '★' },
+  { id: 'level_10', name: 'Climber', desc: 'Reach level 10', icon: '◆' },
+  { id: 'level_20', name: 'Ascended', desc: 'Reach level 20', icon: '◇' },
+  { id: 'clears_50', name: 'Cleaner', desc: 'Clear 50 orbs in one game', icon: '★' },
+  { id: 'clears_100', name: 'Purifier', desc: 'Clear 100 orbs in one game', icon: '◆' },
+  { id: 'clears_200', name: 'Annihilator', desc: 'Clear 200 orbs in one game', icon: '◇' },
+  { id: 'cascade_5', name: 'Chain Reactor', desc: 'Get 5 cascades in one game', icon: '★' },
+  { id: 'cascade_15', name: 'Avalanche', desc: 'Get 15 cascades in one game', icon: '◆' },
+  { id: 'games_5', name: 'Regular', desc: 'Play 5 games', icon: '★' },
+  { id: 'games_20', name: 'Dedicated', desc: 'Play 20 games', icon: '◆' },
+  { id: 'games_50', name: 'Veteran', desc: 'Play 50 games', icon: '◇' },
+  { id: 'powerup_first', name: 'Empowered', desc: 'Use your first power-up', icon: '★' },
+  { id: 'powerup_10', name: 'Power Player', desc: 'Use 10 power-ups', icon: '◆' },
+  { id: 'mode_classic', name: 'Classicist', desc: 'Complete a Classic game', icon: '★' },
+  { id: 'mode_endless', name: 'Endurance', desc: 'Score 3,000 in Endless', icon: '★' },
+  { id: 'mode_timeattack', name: 'Speed Demon', desc: 'Score 1,000 in Time Attack', icon: '★' },
+  { id: 'mode_sprint', name: 'Sprinter', desc: 'Complete Sprint mode', icon: '★' },
+  { id: 'mode_survival', name: 'Survivor', desc: 'Reach level 10 in Survival', icon: '◆' },
+  { id: 'mode_cascade', name: 'Cascade Master', desc: 'Score 2,000 in Cascade mode', icon: '◆' },
+  { id: 'all_themes', name: 'Decorator', desc: 'Try all 5 themes', icon: '★' },
+  { id: 'big_clear', name: 'Big Bang', desc: 'Clear 7+ orbs in a single match', icon: '◆' },
+  { id: 'full_board', name: 'Last Second', desc: 'Clear a match with 11 rows filled', icon: '◇' },
+  { id: 'total_clears_500', name: 'Orb Hunter', desc: 'Clear 500 total orbs', icon: '★' },
+  { id: 'total_clears_2000', name: 'Orb Slayer', desc: 'Clear 2,000 total orbs', icon: '◆' },
+  { id: 'total_score_50k', name: 'Point Hoarder', desc: 'Accumulate 50,000 total score', icon: '◇' },
+];
+
+const ACH_PER_PAGE = 8;
 
 // ============================================================
 // AUDIO
@@ -94,7 +178,7 @@ class AudioMgr {
     return this.ctx;
   }
 
-  play(type: 'drop' | 'clear' | 'cascade' | 'combo' | 'gameover' | 'select' | 'move' | 'levelup' | 'countdown') {
+  play(type: 'drop' | 'clear' | 'cascade' | 'combo' | 'gameover' | 'select' | 'move' | 'levelup' | 'countdown' | 'powerup' | 'achievement') {
     const c = this.ensure();
     const g = c.createGain();
     g.connect(c.destination);
@@ -168,6 +252,25 @@ class AudioMgr {
         const o = c.createOscillator(); o.type = 'square'; o.frequency.value = 440; o.connect(g); o.start(now); o.stop(now + 0.2);
         break;
       }
+      case 'powerup': {
+        g.gain.setValueAtTime(0.25 * this.sfxVol, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        const o = c.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(800, now);
+        o.frequency.exponentialRampToValueAtTime(1600, now + 0.2);
+        o.connect(g); o.start(now); o.stop(now + 0.5);
+        break;
+      }
+      case 'achievement': {
+        for (let i = 0; i < 5; i++) {
+          const t = now + i * 0.08;
+          const gi = c.createGain(); gi.gain.setValueAtTime(0.15 * this.sfxVol, t);
+          gi.gain.exponentialRampToValueAtTime(0.001, t + 0.2); gi.connect(c.destination);
+          const o = c.createOscillator(); o.type = 'sine';
+          o.frequency.setValueAtTime(523 * Math.pow(2, i / 6), t);
+          o.connect(gi); o.start(t); o.stop(t + 0.2);
+        }
+        break;
+      }
     }
   }
 
@@ -182,7 +285,6 @@ class AudioMgr {
     this.drone.frequency.value = 55;
     this.drone.connect(this.droneGain);
     this.drone.start();
-    // Second oscillator for depth
     const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 82.5;
     const g2 = c.createGain(); g2.gain.value = 0.04 * this.musVol; g2.connect(c.destination);
     o2.connect(g2); o2.start();
@@ -200,9 +302,24 @@ const SAVE_KEY = 'neonDrop_save';
 function loadSave(): SaveData {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old saves
+      if (!parsed.totalScore) parsed.totalScore = 0;
+      if (!parsed.totalDrops) parsed.totalDrops = 0;
+      if (!parsed.totalPowerUps) parsed.totalPowerUps = 0;
+      if (!parsed.bestLevel) parsed.bestLevel = 0;
+      if (!parsed.unlockedAch) parsed.unlockedAch = [];
+      if (parsed.skinIdx === undefined) parsed.skinIdx = 0;
+      return parsed;
+    }
   } catch { /* ignore */ }
-  return { highScores: {}, totalGames: 0, totalClears: 0, totalCascades: 0, bestCombo: 0, settings: { sfxVol: 0.8, musVol: 0.6, themeIdx: 0 } };
+  return {
+    highScores: {}, totalGames: 0, totalScore: 0, totalClears: 0,
+    totalCascades: 0, totalDrops: 0, totalPowerUps: 0, bestCombo: 0,
+    bestLevel: 0, unlockedAch: [], skinIdx: 0,
+    settings: { sfxVol: 0.8, musVol: 0.6, themeIdx: 0 },
+  };
 }
 function writeSave(s: SaveData) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
@@ -225,7 +342,7 @@ function lowestEmptyRow(grid: number[][], col: number): number {
   for (let r = 0; r < ROWS; r++) {
     if (grid[r][col] === 0) return r;
   }
-  return -1; // column full
+  return -1;
 }
 
 function findMatches(grid: number[][]): [number, number][] {
@@ -273,6 +390,15 @@ function applyGravity(grid: number[][], meshes: (Mesh | null)[][]): boolean {
   return moved;
 }
 
+function highestOccupiedRow(grid: number[][]): number {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== 0) return r;
+    }
+  }
+  return -1;
+}
+
 // ============================================================
 // MAIN
 // ============================================================
@@ -290,6 +416,7 @@ async function main() {
   audio.sfxVol = save.settings.sfxVol;
   audio.musVol = save.settings.musVol;
   let themeIdx = save.settings.themeIdx;
+  let skinIdx = save.skinIdx;
 
   // ---- Scene ----
   const scene = world.scene;
@@ -302,15 +429,15 @@ async function main() {
 
   // Holodeck environment
   const gridColor = new Color(THEMES[themeIdx].grid);
-  function makeHolodeck() {
+  let holodeckGrp: Group;
+
+  function makeHolodeck(): Group {
     const grp = new Group();
-    // Floor
     const floorGeo = new PlaneGeometry(20, 20);
     const floorMat = new MeshStandardMaterial({ color: THEMES[themeIdx].floor, roughness: 0.9 });
     const floor = new Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2; floor.position.y = 0;
     grp.add(floor);
-    // Floor grid lines
     const linesMat = new LineBasicMaterial({ color: gridColor, transparent: true, opacity: 0.15 });
     for (let i = -10; i <= 10; i++) {
       const g1 = new BufferGeometry().setFromPoints([new Vector3(i, 0.001, -10), new Vector3(i, 0.001, 10)]);
@@ -318,7 +445,6 @@ async function main() {
       const g2 = new BufferGeometry().setFromPoints([new Vector3(-10, 0.001, i), new Vector3(10, 0.001, i)]);
       grp.add(new LineSegments(g2, linesMat));
     }
-    // Walls (subtle)
     const wallMat = new MeshStandardMaterial({ color: THEMES[themeIdx].floor, transparent: true, opacity: 0.3 });
     const wallGeo = new PlaneGeometry(20, 5);
     const bw = new Mesh(wallGeo, wallMat); bw.position.set(0, 2.5, -10); grp.add(bw);
@@ -326,7 +452,7 @@ async function main() {
     const rw = new Mesh(wallGeo, wallMat); rw.position.set(10, 2.5, 0); rw.rotation.y = -Math.PI / 2; grp.add(rw);
     return grp;
   }
-  const holodeckGrp = makeHolodeck();
+  holodeckGrp = makeHolodeck();
   scene.add(holodeckGrp);
 
   // ---- Grid Frame ----
@@ -340,7 +466,6 @@ async function main() {
     const mat = new LineBasicMaterial({ color: c, transparent: true, opacity: 0.3 });
     const matBorder = new LineBasicMaterial({ color: c, transparent: true, opacity: 0.6 });
     const hw = GRID_W / 2, hh = GRID_H;
-    // Border
     const border = new BufferGeometry().setFromPoints([
       new Vector3(-hw, 0, 0), new Vector3(hw, 0, 0),
       new Vector3(hw, 0, 0), new Vector3(hw, hh, 0),
@@ -348,26 +473,24 @@ async function main() {
       new Vector3(-hw, hh, 0), new Vector3(-hw, 0, 0),
     ]);
     gridFrameGrp.add(new LineSegments(border, matBorder));
-    // Vertical lines
     for (let i = 1; i < COLS; i++) {
       const x = -hw + i * CELL;
       const g = new BufferGeometry().setFromPoints([new Vector3(x, 0, 0), new Vector3(x, hh, 0)]);
       gridFrameGrp.add(new LineSegments(g, mat));
     }
-    // Horizontal lines
     for (let i = 1; i < ROWS; i++) {
       const y = i * CELL;
       const g = new BufferGeometry().setFromPoints([new Vector3(-hw, y, 0), new Vector3(hw, y, 0)]);
       gridFrameGrp.add(new LineSegments(g, mat));
     }
-    // Back panel (subtle dark)
     const panelGeo = new PlaneGeometry(GRID_W, GRID_H);
     const panelMat = new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 });
     const panel = new Mesh(panelGeo, panelMat);
     panel.position.set(0, hh / 2, -0.005);
     gridFrameGrp.add(panel);
+    // Re-add selector
+    gridFrameGrp.add(selectorMesh);
   }
-  buildGridFrame();
 
   // ---- Column Selector ----
   const selectorGeo = new PlaneGeometry(CELL * 0.9, GRID_H);
@@ -379,22 +502,40 @@ async function main() {
   gridFrameGrp.add(selectorMesh);
 
   function updateSelectorCol(col: number) {
-    const x = -GRID_W / 2 + col * CELL + CELL / 2;
-    selectorMesh.position.x = x;
+    selectorMesh.position.x = -GRID_W / 2 + col * CELL + CELL / 2;
   }
 
-  // ---- Orb Materials (pre-created) ----
-  const orbMats: MeshStandardMaterial[] = ORB_COLORS.map(c =>
-    new MeshStandardMaterial({ color: c.hex, emissive: c.em, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.2 })
-  );
-  const orbGeo = new SphereGeometry(ORB_R, 16, 12);
+  buildGridFrame();
+
+  // ---- Orb Geometry / Material Factory ----
+  const orbGeoSphere = new SphereGeometry(ORB_R, 16, 12);
+  const orbGeoIcosa = new IcosahedronGeometry(ORB_R, 0);
+  const orbGeoOcta = new OctahedronGeometry(ORB_R, 0);
+
+  function getOrbGeo(): BufferGeometry {
+    const skin = SKIN_DEFS[skinIdx];
+    switch (skin.geoType) {
+      case 'icosahedron': return orbGeoIcosa;
+      case 'octahedron': return orbGeoOcta;
+      default: return orbGeoSphere;
+    }
+  }
+
+  function createOrbMat(colorIdx: number): MeshStandardMaterial {
+    const skin = SKIN_DEFS[skinIdx];
+    const c = ORB_COLORS[colorIdx - 1];
+    return new MeshStandardMaterial({
+      color: c.hex, emissive: c.em,
+      emissiveIntensity: skin.emIntensity,
+      roughness: skin.roughness, metalness: skin.metalness,
+    });
+  }
 
   function createOrbMesh(colorIdx: number): Mesh {
-    const m = new Mesh(orbGeo, orbMats[colorIdx - 1]);
-    return m;
+    return new Mesh(getOrbGeo(), createOrbMat(colorIdx));
   }
 
-  // ---- Active Orb (floating above grid) ----
+  // ---- Active Orb ----
   let activeOrb: Mesh | null = null;
   let activeOrbColor = 0;
 
@@ -419,7 +560,7 @@ async function main() {
     if (activeOrb) { scene.remove(activeOrb); activeOrb = null; }
   }
 
-  // ---- Particle system ----
+  // ---- Particles ----
   interface Particle { mesh: Mesh; vel: Vector3; age: number; life: number; }
   const particles: Particle[] = [];
   const particleGeo = new SphereGeometry(0.008, 6, 4);
@@ -447,9 +588,9 @@ async function main() {
     }
   }
 
-  // ---- Glow ring for clearing ----
+  // ---- Clear Animations ----
   const ringGeo = new TorusGeometry(ORB_R * 1.5, 0.003, 8, 24);
-  interface ClearAnim { mesh: Mesh; orbMesh: Mesh; age: number; }
+  interface ClearAnim { mesh: Mesh; orbMesh: Mesh | null; age: number; }
   const clearAnims: ClearAnim[] = [];
 
   function startClearAnim(row: number, col: number, colorIdx: number) {
@@ -459,7 +600,7 @@ async function main() {
     ring.position.copy(pos);
     ring.position.z += 0.01;
     scene.add(ring);
-    clearAnims.push({ mesh: ring, orbMesh: orbMeshes[row][col]!, age: 0 });
+    clearAnims.push({ mesh: ring, orbMesh: orbMeshes[row][col], age: 0 });
   }
 
   function updateClearAnims(dt: number): boolean {
@@ -470,16 +611,14 @@ async function main() {
       const t = a.age / CLEAR_ANIM_TIME;
       if (t >= 1) {
         scene.remove(a.mesh);
-        if (a.orbMesh) { a.orbMesh.scale.setScalar(0); }
+        if (a.orbMesh) a.orbMesh.scale.setScalar(0);
         clearAnims.splice(i, 1);
         continue;
       }
       active = true;
       a.mesh.scale.setScalar(1 + t * 2);
       (a.mesh.material as MeshBasicMaterial).opacity = 0.8 * (1 - t);
-      if (a.orbMesh) {
-        a.orbMesh.scale.setScalar(1 - t);
-      }
+      if (a.orbMesh) a.orbMesh.scale.setScalar(1 - t);
     }
     return active;
   }
@@ -499,6 +638,7 @@ async function main() {
   let totalClears = 0;
   let totalCascades = 0;
   let bestComboThisGame = 0;
+  let dropsThisGame = 0;
   let dropTimer = 0;
   let clearTimer = 0;
   let cascadeTimer = 0;
@@ -511,20 +651,42 @@ async function main() {
   let dropTargetRow = -1;
   let dropStartY = 0;
   let dropProgress = 0;
+  let achPage = 0;
+  let themesUsed = new Set<number>();
+  let usedPowerUpsThisGame = 0;
+
+  // Power-ups
+  let heldPowerUps: (PowerUpType | null)[] = [null, null, null];
+  let powerUpChargeCombo = 0;
+
+  // Notification queue
+  let notifyTimer = 0;
+  let notifyQueue: { icon: string; title: string; desc: string }[] = [];
+  let notifyShowing = false;
 
   function randomColor(): number {
+    if (gameMode === 'colorlimit') {
+      const maxColors = Math.min(ORB_COLORS.length, 3 + Math.floor((level - 1) / 2));
+      return Math.floor(Math.random() * maxColors) + 1;
+    }
     return Math.floor(Math.random() * ORB_COLORS.length) + 1;
   }
 
   function getDropDelay(): number {
     if (gameMode === 'zen' || gameMode === 'endless') return BASE_DROP_DELAY;
+    if (gameMode === 'survival') return Math.max(MIN_DROP_DELAY, BASE_DROP_DELAY - (level - 1) * SURVIVAL_SPEEDUP);
+    if (gameMode === 'gravity') return Math.max(MIN_DROP_DELAY * 0.5, (BASE_DROP_DELAY / 2) - (level - 1) * DELAY_DEC);
     return Math.max(MIN_DROP_DELAY, BASE_DROP_DELAY - (level - 1) * DELAY_DEC);
   }
 
   function calcScore(count: number, chain: number): number {
     const base = count * 10;
     const groupBonus = count > 3 ? (count - 3) * 20 : 0;
-    return (base + groupBonus) * Math.max(1, chain);
+    const chainMult = Math.max(1, chain);
+    if (gameMode === 'cascade') {
+      return chain > 1 ? (base + groupBonus) * chainMult * 2 : 0;
+    }
+    return (base + groupBonus) * chainMult;
   }
 
   // ---- Clear Grid Visuals ----
@@ -539,6 +701,203 @@ async function main() {
     clearAnims.length = 0;
     for (const p of particles) scene.remove(p.mesh);
     particles.length = 0;
+  }
+
+  // ---- Achievement Checking ----
+  function checkAchievements() {
+    const newlyUnlocked: AchievementDef[] = [];
+    for (const ach of ACHIEVEMENT_DEFS) {
+      if (save.unlockedAch.includes(ach.id)) continue;
+      let unlocked = false;
+      switch (ach.id) {
+        case 'first_match': unlocked = totalClears > 0; break;
+        case 'combo_x2': unlocked = bestComboThisGame >= 2; break;
+        case 'combo_x3': unlocked = bestComboThisGame >= 3; break;
+        case 'combo_x5': unlocked = bestComboThisGame >= 5; break;
+        case 'combo_x8': unlocked = bestComboThisGame >= 8; break;
+        case 'combo_x10': unlocked = bestComboThisGame >= 10; break;
+        case 'score_500': unlocked = score >= 500; break;
+        case 'score_2000': unlocked = score >= 2000; break;
+        case 'score_5000': unlocked = score >= 5000; break;
+        case 'score_10000': unlocked = score >= 10000; break;
+        case 'score_25000': unlocked = score >= 25000; break;
+        case 'level_5': unlocked = level >= 5; break;
+        case 'level_10': unlocked = level >= 10; break;
+        case 'level_20': unlocked = level >= 20; break;
+        case 'clears_50': unlocked = totalClears >= 50; break;
+        case 'clears_100': unlocked = totalClears >= 100; break;
+        case 'clears_200': unlocked = totalClears >= 200; break;
+        case 'cascade_5': unlocked = totalCascades >= 5; break;
+        case 'cascade_15': unlocked = totalCascades >= 15; break;
+        case 'games_5': unlocked = save.totalGames >= 5; break;
+        case 'games_20': unlocked = save.totalGames >= 20; break;
+        case 'games_50': unlocked = save.totalGames >= 50; break;
+        case 'powerup_first': unlocked = save.totalPowerUps >= 1; break;
+        case 'powerup_10': unlocked = save.totalPowerUps >= 10; break;
+        case 'mode_classic': unlocked = gameMode === 'classic' && gameState === 'gameOver'; break;
+        case 'mode_endless': unlocked = gameMode === 'endless' && score >= 3000; break;
+        case 'mode_timeattack': unlocked = gameMode === 'timeAttack' && score >= 1000; break;
+        case 'mode_sprint': unlocked = gameMode === 'sprint' && sprintClears >= SPRINT_TARGET; break;
+        case 'mode_survival': unlocked = gameMode === 'survival' && level >= 10; break;
+        case 'mode_cascade': unlocked = gameMode === 'cascade' && score >= 2000; break;
+        case 'all_themes': unlocked = themesUsed.size >= 5; break;
+        case 'big_clear': unlocked = pendingMatches.length >= 7; break;
+        case 'full_board': unlocked = highestOccupiedRow(grid) >= 10 && pendingMatches.length > 0; break;
+        case 'total_clears_500': unlocked = save.totalClears + totalClears >= 500; break;
+        case 'total_clears_2000': unlocked = save.totalClears + totalClears >= 2000; break;
+        case 'total_score_50k': unlocked = save.totalScore + score >= 50000; break;
+      }
+      if (unlocked) {
+        save.unlockedAch.push(ach.id);
+        newlyUnlocked.push(ach);
+      }
+    }
+    if (newlyUnlocked.length > 0) {
+      writeSave(save);
+      for (const ach of newlyUnlocked) {
+        notifyQueue.push({ icon: ach.icon, title: 'ACHIEVEMENT', desc: ach.name });
+      }
+      audio.play('achievement');
+    }
+  }
+
+  // ---- Notification System ----
+  function showNextNotify() {
+    if (notifyQueue.length === 0) { notifyShowing = false; hidePanel('notify'); return; }
+    const n = notifyQueue.shift()!;
+    const doc = getPanelDoc('notify');
+    if (doc) {
+      const ic = doc.getElementById('notify-icon');
+      if (ic && (ic as any).text) (ic as any).text.value = n.icon;
+      const ti = doc.getElementById('notify-title');
+      if (ti && (ti as any).text) (ti as any).text.value = n.title;
+      const de = doc.getElementById('notify-desc');
+      if (de && (de as any).text) (de as any).text.value = n.desc;
+    }
+    showPanel('notify');
+    notifyShowing = true;
+    notifyTimer = NOTIFY_DURATION;
+  }
+
+  function updateNotify(dt: number) {
+    if (!notifyShowing) {
+      if (notifyQueue.length > 0) showNextNotify();
+      return;
+    }
+    notifyTimer -= dt;
+    if (notifyTimer <= 0) {
+      hidePanel('notify');
+      notifyShowing = false;
+      if (notifyQueue.length > 0) showNextNotify();
+    }
+  }
+
+  // ---- Power-Up System ----
+  function grantPowerUp() {
+    const emptySlot = heldPowerUps.indexOf(null);
+    if (emptySlot < 0) return; // slots full
+    const type = POWER_UPS[Math.floor(Math.random() * POWER_UPS.length)].type;
+    heldPowerUps[emptySlot] = type;
+    audio.play('powerup');
+    notifyQueue.push({ icon: POWER_UPS.find(p => p.type === type)!.icon, title: 'POWER-UP', desc: POWER_UPS.find(p => p.type === type)!.name });
+    updatePowerHUD();
+  }
+
+  function usePowerUp(slotIdx: number) {
+    const type = heldPowerUps[slotIdx];
+    if (!type) return;
+    heldPowerUps[slotIdx] = null;
+    usedPowerUpsThisGame++;
+    save.totalPowerUps++;
+    writeSave(save);
+
+    switch (type) {
+      case 'rowBomb': {
+        // Clear lowest occupied row
+        for (let r = 0; r < ROWS; r++) {
+          let hasOrb = false;
+          for (let c = 0; c < COLS; c++) if (grid[r][c] !== 0) { hasOrb = true; break; }
+          if (hasOrb) {
+            for (let c = 0; c < COLS; c++) {
+              if (grid[r][c] !== 0) {
+                const pos = gridToWorld(r, c);
+                spawnParticles(pos, new Color(ORB_COLORS[grid[r][c] - 1].hex), 4);
+                grid[r][c] = 0;
+                if (orbMeshes[r][c]) { scene.remove(orbMeshes[r][c]!); orbMeshes[r][c] = null; }
+                totalClears++;
+              }
+            }
+            applyGravity(grid, orbMeshes);
+            audio.play('clear');
+            break;
+          }
+        }
+        break;
+      }
+      case 'colorBomb': {
+        // Remove all orbs of a random color present on the board
+        const colorsPresent = new Set<number>();
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c] !== 0) colorsPresent.add(grid[r][c]);
+        if (colorsPresent.size > 0) {
+          const arr = [...colorsPresent];
+          const target = arr[Math.floor(Math.random() * arr.length)];
+          for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+            if (grid[r][c] === target) {
+              const pos = gridToWorld(r, c);
+              spawnParticles(pos, new Color(ORB_COLORS[target - 1].hex), 4);
+              grid[r][c] = 0;
+              if (orbMeshes[r][c]) { scene.remove(orbMeshes[r][c]!); orbMeshes[r][c] = null; }
+              totalClears++;
+            }
+          }
+          applyGravity(grid, orbMeshes);
+          audio.play('cascade');
+        }
+        break;
+      }
+      case 'wildOrb': {
+        // Next orb matches the most common color on the board
+        const counts: Record<number, number> = {};
+        for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== 0) counts[grid[r][c]] = (counts[grid[r][c]] || 0) + 1;
+        }
+        let best = currentColor, bestCount = 0;
+        for (const k in counts) if (counts[+k] > bestCount) { best = +k; bestCount = counts[+k]; }
+        currentColor = best;
+        removeActiveOrb();
+        spawnActiveOrb(currentColor, selectedCol);
+        audio.play('powerup');
+        break;
+      }
+    }
+    checkAchievements();
+    updatePowerHUD();
+    updateHUD();
+  }
+
+  function updatePowerHUD() {
+    const doc = getPanelDoc('powerHud');
+    if (!doc) return;
+    for (let i = 0; i < 3; i++) {
+      const el = doc.getElementById(`pw-${i}`);
+      const iconEl = doc.getElementById(`pw-${i}-icon`);
+      if (!el || !iconEl) continue;
+      const pu = heldPowerUps[i];
+      if (pu) {
+        const def = POWER_UPS.find(p => p.type === pu)!;
+        if ((iconEl as any).text) (iconEl as any).text.value = def.icon;
+        try {
+          (el as any).borderColor = { value: '#ff8800' };
+          (el as any).backgroundColor = { value: 'rgba(255, 136, 0, 0.3)' };
+        } catch { /* */ }
+      } else {
+        if ((iconEl as any).text) (iconEl as any).text.value = '·';
+        try {
+          (el as any).borderColor = { value: '#664400' };
+          (el as any).backgroundColor = { value: 'rgba(255, 136, 0, 0.1)' };
+        } catch { /* */ }
+      }
+    }
   }
 
   // ---- UI Panel Entities ----
@@ -569,13 +928,16 @@ async function main() {
     panels[name] = { entity, doc: null };
   }
 
-  // Create panels
-  createPanel('mainMenu', '/ui/main-menu.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.2 });
-  createPanel('modeSelect', '/ui/mode-select.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.4 });
+  // Create all 13 panels
+  createPanel('mainMenu', '/ui/main-menu.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.4 });
+  createPanel('modeSelect', '/ui/mode-select.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.5 });
   createPanel('gameOver', '/ui/game-over.json', { pos: [0, 1.5, -2], maxW: 0.8, maxH: 1.2 });
   createPanel('pauseMenu', '/ui/pause-menu.json', { pos: [0, 1.5, -2], maxW: 0.7, maxH: 0.9 });
   createPanel('settings', '/ui/settings.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.2 });
   createPanel('help', '/ui/help.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.4 });
+  createPanel('achievements', '/ui/achievements.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.5 });
+  createPanel('stats', '/ui/stats.json', { pos: [0, 1.5, -2], maxW: 0.9, maxH: 1.5 });
+  createPanel('skins', '/ui/skins.json', { pos: [0, 1.5, -2], maxW: 0.8, maxH: 1.4 });
   createPanel('hud', '/ui/hud.json', {
     maxW: 0.45, maxH: 0.12,
     follower: { offset: [0, 0.2, -0.6], behavior: FollowBehavior.PivotY, speed: 5, tolerance: 0.3 },
@@ -584,8 +946,15 @@ async function main() {
     maxW: 0.15, maxH: 0.2,
     screenSpace: { width: '120px', height: 'auto', top: '20px', right: '20px' },
   });
+  createPanel('powerHud', '/ui/power-hud.json', {
+    maxW: 0.2, maxH: 0.1,
+    screenSpace: { width: '140px', height: 'auto', top: '140px', right: '20px' },
+  });
+  createPanel('notify', '/ui/notify.json', {
+    maxW: 0.35, maxH: 0.12,
+    follower: { offset: [0, -0.1, -0.5], behavior: FollowBehavior.PivotY, speed: 8, tolerance: 0.2 },
+  });
 
-  // Wait for panel docs to be ready
   function getPanelDoc(name: string): UIKitDocument | null {
     const p = panels[name];
     if (!p) return null;
@@ -603,25 +972,26 @@ async function main() {
 
   // ---- UI Event Binding ----
   let uiBindingsReady = false;
+
   function tryBindUI(): boolean {
     // Main Menu
     const mm = getPanelDoc('mainMenu');
     if (!mm) return false;
     const btnStart = mm.getElementById('btn-start');
-    const btnModes = mm.getElementById('btn-modes');
-    const btnSettings = mm.getElementById('btn-settings');
-    const btnHelp = mm.getElementById('btn-help');
     if (!btnStart) return false;
 
     btnStart.addEventListener('click', () => { audio.play('select'); startGame(); });
-    btnModes?.addEventListener('click', () => { audio.play('select'); switchState('modeSelect'); });
-    btnSettings?.addEventListener('click', () => { audio.play('select'); switchState('settings'); });
-    btnHelp?.addEventListener('click', () => { audio.play('select'); switchState('help'); });
+    mm.getElementById('btn-modes')?.addEventListener('click', () => { audio.play('select'); switchState('modeSelect'); });
+    mm.getElementById('btn-settings')?.addEventListener('click', () => { audio.play('select'); switchState('settings'); });
+    mm.getElementById('btn-help')?.addEventListener('click', () => { audio.play('select'); switchState('help'); });
+    mm.getElementById('btn-achievements')?.addEventListener('click', () => { audio.play('select'); achPage = 0; switchState('achievements'); });
+    mm.getElementById('btn-stats')?.addEventListener('click', () => { audio.play('select'); switchState('stats'); });
+    mm.getElementById('btn-skins')?.addEventListener('click', () => { audio.play('select'); switchState('skins'); });
 
     // Mode Select
     const ms = getPanelDoc('modeSelect');
     if (ms) {
-      for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen'] as const) {
+      for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity'] as const) {
         const btn = ms.getElementById(`mode-${m}`);
         btn?.addEventListener('click', () => {
           audio.play('select');
@@ -669,7 +1039,9 @@ async function main() {
       for (let i = 0; i < THEMES.length; i++) {
         st.getElementById(`theme-${i}`)?.addEventListener('click', () => {
           themeIdx = i; save.settings.themeIdx = i; writeSave(save);
+          themesUsed.add(i);
           applyTheme(); updateSettingsUI(); audio.play('select');
+          checkAchievements();
         });
       }
       st.getElementById('settings-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
@@ -681,6 +1053,48 @@ async function main() {
       hp.getElementById('help-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
     }
 
+    // Achievements
+    const ach = getPanelDoc('achievements');
+    if (ach) {
+      ach.getElementById('ach-prev')?.addEventListener('click', () => {
+        audio.play('select'); achPage = Math.max(0, achPage - 1); updateAchievementsUI();
+      });
+      ach.getElementById('ach-next')?.addEventListener('click', () => {
+        const maxPage = Math.max(0, Math.ceil(ACHIEVEMENT_DEFS.length / ACH_PER_PAGE) - 1);
+        audio.play('select'); achPage = Math.min(maxPage, achPage + 1); updateAchievementsUI();
+      });
+      ach.getElementById('ach-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
+    }
+
+    // Stats
+    const stDoc = getPanelDoc('stats');
+    if (stDoc) {
+      stDoc.getElementById('stats-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
+    }
+
+    // Skins
+    const sk = getPanelDoc('skins');
+    if (sk) {
+      for (let i = 0; i < SKIN_DEFS.length; i++) {
+        sk.getElementById(`skin-${i}`)?.addEventListener('click', () => {
+          audio.play('select'); skinIdx = i; save.skinIdx = i; writeSave(save); updateSkinsUI();
+        });
+      }
+      sk.getElementById('skins-back')?.addEventListener('click', () => { audio.play('select'); switchState('title'); });
+    }
+
+    // Power-up HUD (click to use)
+    const pwDoc = getPanelDoc('powerHud');
+    if (pwDoc) {
+      for (let i = 0; i < 3; i++) {
+        pwDoc.getElementById(`pw-${i}`)?.addEventListener('click', () => {
+          if (gameState === 'playing' && playPhase === 'selecting') {
+            usePowerUp(i);
+          }
+        });
+      }
+    }
+
     return true;
   }
 
@@ -688,14 +1102,11 @@ async function main() {
   function updateHUD() {
     const doc = getPanelDoc('hud');
     if (!doc) return;
-    const s = doc.getElementById('hud-score');
-    if (s && (s as any).text) (s as any).text.value = `${score}`;
-    const l = doc.getElementById('hud-level');
-    if (l && (l as any).text) (l as any).text.value = `${level}`;
-    const c = doc.getElementById('hud-combo');
-    if (c && (c as any).text) (c as any).text.value = comboChain > 1 ? `x${comboChain}` : 'x1';
-    const cl = doc.getElementById('hud-clears');
-    if (cl && (cl as any).text) (cl as any).text.value = `${totalClears}`;
+    const setText = (id: string, v: string) => { const el = doc.getElementById(id); if (el && (el as any).text) (el as any).text.value = v; };
+    setText('hud-score', `${score}`);
+    setText('hud-level', `${level}`);
+    setText('hud-combo', comboChain > 1 ? `x${comboChain}` : 'x1');
+    setText('hud-clears', `${totalClears}`);
   }
 
   function updateNextOrb() {
@@ -706,7 +1117,7 @@ async function main() {
       try {
         (el as any).backgroundColor = { value: ORB_COLORS[nextColor - 1].hex };
         (el as any).borderColor = { value: ORB_COLORS[nextColor - 1].em };
-      } catch { /* style may not be settable this way */ }
+      } catch { /* */ }
     }
     const tl = doc.getElementById('timer-label');
     const tv = doc.getElementById('timer-value');
@@ -717,6 +1128,9 @@ async function main() {
     } else if (gameMode === 'sprint' && tl && tv) {
       if ((tl as any).text) (tl as any).text.value = 'LEFT';
       if ((tv as any).text) (tv as any).text.value = `${Math.max(0, SPRINT_TARGET - sprintClears)}`;
+    } else if (gameMode === 'survival' && tl && tv) {
+      if ((tl as any).text) (tl as any).text.value = 'SPD';
+      if ((tv as any).text) (tv as any).text.value = `${getDropDelay().toFixed(1)}s`;
     } else if (tl && tv) {
       if ((tl as any).text) (tl as any).text.value = '';
       if ((tv as any).text) (tv as any).text.value = '';
@@ -733,8 +1147,7 @@ async function main() {
   function updateModeSelectUI() {
     const doc = getPanelDoc('modeSelect');
     if (!doc) return;
-    // Update visual selection (we can't easily change classes, but update border)
-    for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen']) {
+    for (const m of ['classic', 'endless', 'timeattack', 'sprint', 'zen', 'survival', 'cascade', 'colorlimit', 'gravity']) {
       const modeKey = m === 'timeattack' ? 'timeAttack' : m;
       const el = doc.getElementById(`mode-${m}`);
       if (el) {
@@ -743,7 +1156,7 @@ async function main() {
           (el as any).borderColor = { value: isActive ? '#00ffff' : '#00aaaa' };
           (el as any).borderWidth = { value: isActive ? 0.1 : 0.06 };
           (el as any).backgroundColor = { value: isActive ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0, 255, 255, 0.08)' };
-        } catch { /* some props may not be settable */ }
+        } catch { /* */ }
       }
     }
   }
@@ -761,7 +1174,6 @@ async function main() {
     setText('go-clears', `${totalClears}`);
     setText('go-combo', `x${bestComboThisGame}`);
     setText('go-cascades', `${totalCascades}`);
-    // Check new best
     const prev = save.highScores[gameMode] || 0;
     const isNewBest = score > prev;
     const nb = doc.getElementById('go-newbest');
@@ -781,6 +1193,76 @@ async function main() {
     if (tn && (tn as any).text) (tn as any).text.value = THEMES[themeIdx].name;
   }
 
+  function updateAchievementsUI() {
+    const doc = getPanelDoc('achievements');
+    if (!doc) return;
+    const totalPages = Math.max(1, Math.ceil(ACHIEVEMENT_DEFS.length / ACH_PER_PAGE));
+    const unlocked = save.unlockedAch;
+    const setText = (id: string, v: string) => { const el = doc.getElementById(id); if (el && (el as any).text) (el as any).text.value = v; };
+    setText('ach-progress', `${unlocked.length} / ${ACHIEVEMENT_DEFS.length} Unlocked`);
+    setText('ach-page-label', `${achPage + 1} / ${totalPages}`);
+
+    const start = achPage * ACH_PER_PAGE;
+    for (let i = 0; i < ACH_PER_PAGE; i++) {
+      const idx = start + i;
+      const el = doc.getElementById(`ach-${i}`);
+      const nameEl = doc.getElementById(`ach-${i}-name`);
+      const descEl = doc.getElementById(`ach-${i}-desc`);
+      if (!el) continue;
+
+      if (idx < ACHIEVEMENT_DEFS.length) {
+        const ach = ACHIEVEMENT_DEFS[idx];
+        const isUnlocked = unlocked.includes(ach.id);
+        setText(`ach-${i}-name`, isUnlocked ? ach.name : '???');
+        setText(`ach-${i}-desc`, isUnlocked ? ach.desc : 'Keep playing to unlock');
+        try {
+          (el as any).borderColor = { value: isUnlocked ? '#ff8800' : '#553300' };
+          (el as any).backgroundColor = { value: isUnlocked ? 'rgba(255, 136, 0, 0.15)' : 'rgba(255, 136, 0, 0.08)' };
+        } catch { /* */ }
+      } else {
+        setText(`ach-${i}-name`, '');
+        setText(`ach-${i}-desc`, '');
+        try { (el as any).backgroundColor = { value: 'transparent' }; (el as any).borderColor = { value: 'transparent' }; } catch { /* */ }
+      }
+    }
+  }
+
+  function updateStatsUI() {
+    const doc = getPanelDoc('stats');
+    if (!doc) return;
+    const setText = (id: string, v: string) => { const el = doc.getElementById(id); if (el && (el as any).text) (el as any).text.value = v; };
+    setText('st-games', `${save.totalGames}`);
+    setText('st-total-score', `${save.totalScore}`);
+    setText('st-clears', `${save.totalClears}`);
+    setText('st-drops', `${save.totalDrops}`);
+    setText('st-cascades', `${save.totalCascades}`);
+    setText('st-combo', `x${save.bestCombo}`);
+    setText('st-powerups', `${save.totalPowerUps}`);
+    setText('st-level', `${save.bestLevel}`);
+    // High scores per mode
+    setText('st-hs-classic', `${save.highScores['classic'] || 0}`);
+    setText('st-hs-endless', `${save.highScores['endless'] || 0}`);
+    setText('st-hs-timeattack', `${save.highScores['timeAttack'] || 0}`);
+    setText('st-hs-sprint', `${save.highScores['sprint'] || 0}`);
+    setText('st-hs-survival', `${save.highScores['survival'] || 0}`);
+    setText('st-hs-cascade', `${save.highScores['cascade'] || 0}`);
+  }
+
+  function updateSkinsUI() {
+    const doc = getPanelDoc('skins');
+    if (!doc) return;
+    for (let i = 0; i < SKIN_DEFS.length; i++) {
+      const el = doc.getElementById(`skin-${i}`);
+      if (!el) continue;
+      const isActive = i === skinIdx;
+      try {
+        (el as any).borderColor = { value: isActive ? '#aa00ff' : '#550088' };
+        (el as any).borderWidth = { value: isActive ? 0.1 : 0.06 };
+        (el as any).backgroundColor = { value: isActive ? 'rgba(170, 0, 255, 0.2)' : 'rgba(170, 0, 255, 0.06)' };
+      } catch { /* */ }
+    }
+  }
+
   // ---- Theme ----
   function applyTheme() {
     const t = THEMES[themeIdx];
@@ -788,12 +1270,11 @@ async function main() {
     ambLight.color.set(t.amb);
     gridColor.set(t.grid);
     selectorMat.color.set(t.grid);
-    buildGridFrame();
     // Rebuild holodeck
     scene.remove(holodeckGrp);
-    const newHolo = makeHolodeck();
-    scene.add(newHolo);
-    (holodeckGrp as any).children = newHolo.children; // keep ref for future
+    holodeckGrp = makeHolodeck();
+    scene.add(holodeckGrp);
+    buildGridFrame();
   }
 
   // ---- State Machine ----
@@ -803,8 +1284,7 @@ async function main() {
     gridFrameGrp.visible = false;
     selectorMesh.visible = false;
     removeActiveOrb();
-    // Hide grid orbs in non-playing states
-    const showGrid = state === 'playing' || state === 'paused';
+    const showGrid = state === 'playing' || state === 'paused' || state === 'gameOver';
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       if (orbMeshes[r][c]) orbMeshes[r][c]!.visible = showGrid;
     }
@@ -823,6 +1303,7 @@ async function main() {
         selectorMesh.visible = true;
         showPanel('hud');
         showPanel('nextOrb');
+        showPanel('powerHud');
         for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
           if (orbMeshes[r][c]) orbMeshes[r][c]!.visible = true;
         }
@@ -848,7 +1329,21 @@ async function main() {
       case 'help':
         showPanel('help');
         break;
+      case 'achievements':
+        showPanel('achievements');
+        updateAchievementsUI();
+        break;
+      case 'stats':
+        showPanel('stats');
+        updateStatsUI();
+        break;
+      case 'skins':
+        showPanel('skins');
+        updateSkinsUI();
+        break;
     }
+    // Always show notify if active
+    if (notifyShowing) showPanel('notify');
   }
 
   function startGame() {
@@ -856,47 +1351,56 @@ async function main() {
     grid = makeGrid();
     orbMeshes = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     score = 0; level = 1; comboChain = 0; totalClears = 0; totalCascades = 0;
-    bestComboThisGame = 0; gameTimer = 0; sprintClears = 0;
+    bestComboThisGame = 0; dropsThisGame = 0; gameTimer = 0; sprintClears = 0;
+    usedPowerUpsThisGame = 0;
+    heldPowerUps = [null, null, null];
+    powerUpChargeCombo = 0;
     selectedCol = Math.floor(COLS / 2);
     currentColor = randomColor();
     nextColor = randomColor();
     playPhase = 'countdown';
     countdownTimer = COUNTDOWN_TIME;
     dropTimer = 0;
+    themesUsed.add(themeIdx);
     audio.startMusic();
     save.totalGames++;
     writeSave(save);
     switchState('playing');
     spawnActiveOrb(currentColor, selectedCol);
+    updatePowerHUD();
   }
 
   function endGame() {
     audio.play('gameover');
-    // Save high score
     const prev = save.highScores[gameMode] || 0;
     if (score > prev) save.highScores[gameMode] = score;
     save.totalClears += totalClears;
     save.totalCascades += totalCascades;
+    save.totalScore += score;
+    save.totalDrops += dropsThisGame;
     if (bestComboThisGame > save.bestCombo) save.bestCombo = bestComboThisGame;
+    if (level > save.bestLevel) save.bestLevel = level;
     writeSave(save);
+    checkAchievements();
     switchState('gameOver');
   }
 
   function dropOrb() {
     const targetRow = lowestEmptyRow(grid, selectedCol);
-    if (targetRow < 0) return; // column full — shouldn't happen if we prevent input
+    if (targetRow < 0) return;
     audio.play('drop');
     playPhase = 'dropping';
     dropTargetRow = targetRow;
     dropStartY = activeOrb ? activeOrb.position.y : gridToWorld(ROWS, selectedCol).y + CELL * 0.5;
     dropProgress = 0;
+    dropsThisGame++;
   }
 
   function instantDrop() {
     const targetRow = lowestEmptyRow(grid, selectedCol);
     if (targetRow < 0) return;
     audio.play('drop');
-    // Place immediately
+    dropsThisGame++;
     placeOrb(targetRow, selectedCol, currentColor);
     removeActiveOrb();
     processAfterPlace();
@@ -912,6 +1416,7 @@ async function main() {
 
   function processAfterPlace() {
     comboChain = 0;
+    powerUpChargeCombo = 0;
     checkAndClear();
   }
 
@@ -919,21 +1424,23 @@ async function main() {
     pendingMatches = findMatches(grid);
     if (pendingMatches.length > 0) {
       comboChain++;
+      powerUpChargeCombo++;
       if (comboChain > bestComboThisGame) bestComboThisGame = comboChain;
       const pts = calcScore(pendingMatches.length, comboChain);
       score += pts;
       totalClears += pendingMatches.length;
       sprintClears += pendingMatches.length;
 
-      if (comboChain > 1) {
-        audio.play('cascade');
-        totalCascades++;
-      } else {
-        audio.play('clear');
-      }
+      if (comboChain > 1) { audio.play('cascade'); totalCascades++; }
+      else { audio.play('clear'); }
       if (comboChain >= 3) audio.play('combo');
 
-      // Start clear animation
+      // Grant power-up on combo threshold
+      if (powerUpChargeCombo >= POWERUP_COMBO_THRESHOLD) {
+        grantPowerUp();
+        powerUpChargeCombo = 0;
+      }
+
       for (const [r, c] of pendingMatches) {
         const colorIdx = grid[r][c];
         startClearAnim(r, c, colorIdx);
@@ -944,12 +1451,13 @@ async function main() {
       playPhase = 'clearing';
       clearTimer = 0;
 
-      // Level up check
       const newLevel = Math.floor(totalClears / CLEARS_PER_LVL) + 1;
       if (newLevel > level) { level = newLevel; audio.play('levelup'); }
+
+      checkAchievements();
     } else {
-      // No matches — check game over or next orb
       comboChain = 0;
+      powerUpChargeCombo = 0;
       if (isGameOver()) { endGame(); return; }
       playPhase = 'nextOrb';
       nextOrbTimer = 0;
@@ -958,27 +1466,19 @@ async function main() {
   }
 
   function finishClear() {
-    // Remove matched orbs from grid
     for (const [r, c] of pendingMatches) {
       grid[r][c] = 0;
       if (orbMeshes[r][c]) { scene.remove(orbMeshes[r][c]!); orbMeshes[r][c] = null; }
     }
-    // Apply gravity
     const didFall = applyGravity(grid, orbMeshes);
-    if (didFall) {
-      playPhase = 'cascading';
-      cascadeTimer = 0;
-    } else {
-      // Check for more matches
-      checkAndClear();
-    }
+    if (didFall) { playPhase = 'cascading'; cascadeTimer = 0; }
+    else { checkAndClear(); }
   }
 
   function isGameOver(): boolean {
     if (gameMode === 'zen') return false;
     if (gameMode === 'timeAttack' && gameTimer >= TIME_ATTACK_SECS) return true;
     if (gameMode === 'sprint' && sprintClears >= SPRINT_TARGET) return true;
-    // Check if any column is full (top row occupied)
     for (let c = 0; c < COLS; c++) {
       if (lowestEmptyRow(grid, c) < 0) return true;
     }
@@ -990,7 +1490,6 @@ async function main() {
     nextColor = randomColor();
     dropTimer = 0;
     playPhase = 'selecting';
-    // Ensure selected column is not full
     if (lowestEmptyRow(grid, selectedCol) < 0) {
       for (let c = 0; c < COLS; c++) {
         if (lowestEmptyRow(grid, c) >= 0) { selectedCol = c; break; }
@@ -1010,16 +1509,12 @@ async function main() {
     // Pause
     if (gameState === 'playing' && playPhase !== 'countdown') {
       if (kb?.getKeyDown?.('Escape') || kb?.getKeyDown?.('KeyP') || rightGP?.getButtonDown?.(InputComponent.B_Button)) {
-        audio.play('select');
-        switchState('paused');
-        return;
+        audio.play('select'); switchState('paused'); return;
       }
     }
     if (gameState === 'paused') {
       if (kb?.getKeyDown?.('Escape') || kb?.getKeyDown?.('KeyP') || rightGP?.getButtonDown?.(InputComponent.B_Button)) {
-        audio.play('select');
-        switchState('playing');
-        return;
+        audio.play('select'); switchState('playing'); return;
       }
     }
 
@@ -1052,19 +1547,19 @@ async function main() {
     }
 
     // Drop
-    if (kb?.getKeyDown?.('ArrowDown')) {
-      dropOrb();
-    }
-    if (kb?.getKeyDown?.('Space')) {
-      instantDrop();
-    }
+    if (kb?.getKeyDown?.('ArrowDown')) dropOrb();
+    if (kb?.getKeyDown?.('Space')) instantDrop();
+    if (rightGP?.getButtonDown?.(InputComponent.Trigger)) dropOrb();
+    if (rightGP?.getButtonDown?.(InputComponent.A_Button)) instantDrop();
 
-    // XR input
-    if (rightGP?.getButtonDown?.(InputComponent.Trigger)) {
-      dropOrb();
-    }
-    if (rightGP?.getButtonDown?.(InputComponent.A_Button)) {
-      instantDrop();
+    // Power-up hotkeys (1, 2, 3)
+    if (kb?.getKeyDown?.('Digit1')) usePowerUp(0);
+    if (kb?.getKeyDown?.('Digit2')) usePowerUp(1);
+    if (kb?.getKeyDown?.('Digit3')) usePowerUp(2);
+
+    // XR squeeze to use first available power-up
+    if (rightGP?.getButtonDown?.(InputComponent.Squeeze)) {
+      for (let i = 0; i < 3; i++) { if (heldPowerUps[i]) { usePowerUp(i); break; } }
     }
   }
 
@@ -1072,12 +1567,10 @@ async function main() {
   function update(dt: number) {
     dt = Math.min(dt, 0.05);
 
-    // Bind UI events once ready
-    if (!uiBindingsReady) {
-      uiBindingsReady = tryBindUI();
-    }
+    if (!uiBindingsReady) uiBindingsReady = tryBindUI();
 
     updateParticles(dt);
+    updateNotify(dt);
 
     if (gameState === 'playing') {
       handleInput(dt);
@@ -1085,39 +1578,34 @@ async function main() {
       switch (playPhase) {
         case 'countdown': {
           countdownTimer -= dt;
-          if (countdownTimer <= 0) {
-            playPhase = 'selecting';
-            prepareNextOrb();
-          } else {
-            const sec = Math.ceil(countdownTimer);
-            // Flash the active orb
-            if (activeOrb) {
-              const flash = Math.sin(countdownTimer * 10) * 0.3 + 0.7;
-              activeOrb.scale.setScalar(flash);
-            }
+          if (countdownTimer <= 0) { playPhase = 'selecting'; prepareNextOrb(); }
+          else if (activeOrb) {
+            const flash = Math.sin(countdownTimer * 10) * 0.3 + 0.7;
+            activeOrb.scale.setScalar(flash);
           }
           break;
         }
         case 'selecting': {
-          // Auto-drop timer
           dropTimer += dt;
-          if (dropTimer >= getDropDelay()) {
-            dropOrb();
-          }
-          // Bob active orb
+          if (dropTimer >= getDropDelay()) dropOrb();
           if (activeOrb) {
             const bobY = Math.sin(performance.now() / 300) * 0.005;
             const basePos = gridToWorld(ROWS, selectedCol);
             activeOrb.position.y = basePos.y + CELL * 0.5 + bobY;
+            // Skin-specific rotation for crystal/ice
+            if (SKIN_DEFS[skinIdx].geoType !== 'sphere') {
+              activeOrb.rotation.y += dt * 1.5;
+              activeOrb.rotation.x += dt * 0.7;
+            }
           }
-
-          // Game timer
           if (gameMode === 'timeAttack') {
             gameTimer += dt;
             updateNextOrb();
-            if (gameTimer >= TIME_ATTACK_SECS) {
-              endGame();
-            }
+            if (gameTimer >= TIME_ATTACK_SECS) endGame();
+          }
+          if (gameMode === 'survival') {
+            gameTimer += dt;
+            updateNextOrb();
           }
           break;
         }
@@ -1129,7 +1617,6 @@ async function main() {
             activeOrb.position.y = currentY;
           }
           if (dropProgress >= 1) {
-            // Place the orb
             removeActiveOrb();
             placeOrb(dropTargetRow, selectedCol, currentColor);
             processAfterPlace();
@@ -1139,26 +1626,19 @@ async function main() {
         case 'clearing': {
           clearTimer += dt;
           const animDone = !updateClearAnims(dt);
-          if (clearTimer >= CLEAR_ANIM_TIME && animDone) {
-            finishClear();
-          }
+          if (clearTimer >= CLEAR_ANIM_TIME && animDone) finishClear();
           break;
         }
         case 'cascading': {
           cascadeTimer += dt;
-          if (cascadeTimer >= CASCADE_DELAY) {
-            checkAndClear();
-          }
+          if (cascadeTimer >= CASCADE_DELAY) checkAndClear();
           break;
         }
         case 'nextOrb': {
           nextOrbTimer += dt;
           if (nextOrbTimer >= NEXT_ORB_DELAY) {
-            if (gameMode === 'sprint' && sprintClears >= SPRINT_TARGET) {
-              endGame();
-            } else {
-              prepareNextOrb();
-            }
+            if (gameMode === 'sprint' && sprintClears >= SPRINT_TARGET) endGame();
+            else prepareNextOrb();
           }
           break;
         }
@@ -1166,10 +1646,17 @@ async function main() {
     } else {
       handleInput(dt);
     }
+
+    // Rotate non-sphere grid orbs for visual flair
+    if (SKIN_DEFS[skinIdx].geoType !== 'sphere' && (gameState === 'playing' || gameState === 'paused' || gameState === 'gameOver')) {
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const m = orbMeshes[r][c];
+        if (m) { m.rotation.y += dt * 0.3; m.rotation.x += dt * 0.15; }
+      }
+    }
   }
 
   // ---- Register Update Loop ----
-  (world as any).onUpdate = update;
   let lastTime = performance.now();
   function rafLoop(now: number) {
     const dt = Math.min((now - lastTime) / 1000, 0.05);
@@ -1184,6 +1671,7 @@ async function main() {
   } catch { requestAnimationFrame(rafLoop); }
 
   // ---- Initialize ----
+  themesUsed.add(themeIdx);
   switchState('title');
 }
 

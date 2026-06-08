@@ -1,0 +1,107 @@
+<style>
+  .skins-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4;
+    background-color: rgba(0, 0, 0, 0.92);
+    border-color: #aa00ff;
+    border-width: 0.12;
+    border-radius: 1.2;
+    gap: 1.5;
+    min-width: 28;
+  }
+  .skins-title {
+    font-size: 3.5;
+    color: #aa00ff;
+    font-weight: bold;
+    margin-bottom: 1;
+  }
+  .skin-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 24;
+    padding: 1;
+    background-color: rgba(170, 0, 255, 0.06);
+    border-color: #550088;
+    border-width: 0.06;
+    border-radius: 0.5;
+    gap: 2;
+    cursor: pointer;
+  }
+  .skin-row:hover {
+    background-color: rgba(170, 0, 255, 0.15);
+  }
+  .skin-active {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 24;
+    padding: 1;
+    background-color: rgba(170, 0, 255, 0.2);
+    border-color: #aa00ff;
+    border-width: 0.1;
+    border-radius: 0.5;
+    gap: 2;
+    cursor: pointer;
+  }
+  .skin-preview {
+    width: 4;
+    height: 4;
+    border-radius: 2;
+    border-width: 0.08;
+    border-color: #aa00ff;
+  }
+  .skin-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3;
+  }
+  .skin-name {
+    font-size: 1.5;
+    color: #aa00ff;
+    font-weight: bold;
+  }
+  .skin-desc {
+    font-size: 1;
+    color: #607080;
+  }
+  .skin-locked {
+    font-size: 1;
+    color: #ff0055;
+  }
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14;
+    height: 3;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #555555;
+    border-width: 0.06;
+    border-radius: 0.5;
+    cursor: pointer;
+    margin-top: 1;
+  }
+  .back-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .back-text {
+    font-size: 1.5;
+    color: #888888;
+    font-weight: bold;
+  }
+</style>
+<div class="skins-root">
+  <span class="skins-title">ORB SKINS</span>
+  <div id="skin-0" class="skin-active" cursor="pointer"><div class="skin-preview" style="background-color: #00ffff"></div><div class="skin-info"><span class="skin-name">NEON</span><span class="skin-desc">Classic glowing orbs</span></div></div>
+  <div id="skin-1" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #ff00ff"></div><div class="skin-info"><span class="skin-name">CRYSTAL</span><span class="skin-desc">Faceted gem orbs</span></div></div>
+  <div id="skin-2" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #ff4400"></div><div class="skin-info"><span class="skin-name">FLAME</span><span class="skin-desc">Burning ember orbs</span></div></div>
+  <div id="skin-3" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #00aaff"></div><div class="skin-info"><span class="skin-name">ICE</span><span class="skin-desc">Frozen crystal orbs</span></div></div>
+  <div id="skin-4" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #ffff00"></div><div class="skin-info"><span class="skin-name">PLASMA</span><span class="skin-desc">Electric energy orbs</span></div></div>
+  <div id="skin-5" class="skin-row" cursor="pointer"><div class="skin-preview" style="background-color: #00ff44"></div><div class="skin-info"><span class="skin-name">TOXIC</span><span class="skin-desc">Radioactive glow orbs</span></div></div>
+  <div id="skins-back" class="back-btn" cursor="pointer">
+    <span class="back-text">BACK</span>
+  </div>
+</div>
